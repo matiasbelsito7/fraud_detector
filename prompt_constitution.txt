@@ -1,0 +1,103 @@
+Quiero que redactes un `constitution.md` para un proyecto de Machine Learning de detección de fraude utilizando el dataset **IEEE-CIS Fraud Detection**.
+
+El proyecto busca construir un sistema de detección de fraude con una metodología de Machine Learning Engineering / MLOps, realizando personalmente el análisis, preprocessing y feature engineering sobre los datos raw.
+
+### Responsabilidad de este archivo
+
+`constitution.md` debe definir los **principios, reglas y restricciones fundamentales del proyecto**.
+
+Estas reglas deben considerarse obligatorias y aplicarse durante todo el desarrollo, independientemente de qué agente o tarea esté trabajando.
+
+La separación entre documentos es:
+
+* `agents.md` → cómo trabajan los agentes.
+* `constitution.md` → qué principios y reglas deben respetarse siempre.
+* `specs.md` → qué debe hacer concretamente el sistema.
+
+No repetir en este documento instrucciones sobre el comportamiento de los agentes ni especificaciones detalladas de implementación.
+
+### Principios que debe establecer
+
+El documento debe cubrir, como mínimo:
+
+1. **Integridad de los datos**
+
+   * Los datos raw deben preservarse.
+   * Las transformaciones deben ser trazables y reproducibles.
+   * No ocultar problemas de calidad mediante transformaciones silenciosas.
+
+2. **Reproducibilidad**
+
+   * Los resultados deben poder reproducirse.
+   * Las transformaciones, splits, configuraciones y experimentos relevantes deben quedar registrados.
+
+3. **Data leakage**
+
+   * Establecer como principio fundamental que ninguna información que no estaría disponible en el momento de inferencia puede utilizarse para construir una feature o entrenar el modelo.
+   * Prestar especial atención a información temporal y agregaciones históricas.
+
+4. **Feature engineering**
+
+   * Las features deben tener una justificación.
+   * Debe distinguirse entre features disponibles en producción y features que dependen de información futura.
+   * Evitar crear features únicamente para mejorar artificialmente una métrica.
+
+5. **Evaluación**
+
+   * La evaluación debe representar razonablemente el escenario real de detección de fraude.
+   * No depender exclusivamente de accuracy.
+   * El fuerte desbalance de clases debe ser considerado explícitamente.
+   * El conjunto de test debe mantenerse independiente del proceso de selección y tuning.
+
+6. **Transparencia metodológica**
+
+   * Las decisiones importantes deben estar justificadas.
+   * Los resultados negativos o decisiones que no mejoren el modelo no deben ocultarse.
+   * No manipular la metodología para obtener mejores resultados.
+
+7. **Simplicidad y mantenibilidad**
+
+   * Preferir soluciones simples cuando resuelvan correctamente el problema.
+   * No introducir herramientas, modelos o infraestructura sin una razón concreta.
+   * Mantener separación clara de responsabilidades.
+
+8. **Producción e inferencia**
+
+   * Las transformaciones utilizadas durante entrenamiento deben poder reproducirse de manera consistente durante inferencia.
+   * No utilizar información que solamente exista durante entrenamiento si no puede obtenerse en producción.
+
+9. **Trazabilidad de experimentos**
+
+   * Los experimentos importantes deben poder relacionarse con el código, datos, configuración y resultados que los produjeron.
+
+10. **Honestidad de los resultados**
+
+* No presentar métricas de validación o test como evidencia de rendimiento real sin aclarar sus limitaciones.
+* Diferenciar claramente entre resultados experimentales y comportamiento esperado en producción.
+
+### Importante
+
+No convertir estos principios en una lista extensa de requisitos técnicos.
+
+No definir aquí:
+
+* estructura de carpetas;
+* nombres concretos de archivos;
+* modelos específicos;
+* métricas específicas;
+* hiperparámetros;
+* endpoints;
+* arquitectura de API;
+* configuración de Docker;
+* configuración de MLflow;
+* pipeline concreto;
+* criterios de aceptación;
+* tareas del proyecto.
+
+Esos detalles pertenecerán a `specs.md`.
+
+El resultado debe ser un documento relativamente corto, claro y normativo, que pueda utilizarse como **constitución del proyecto** y que establezca las reglas que ningún agente debería violar.
+
+Primero planificá brevemente la estructura del documento y después redactá el `constitution.md` completo.
+
+No implementes código.

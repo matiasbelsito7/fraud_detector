@@ -1,0 +1,19 @@
+[tool.black]
+line-length = 88
+target-version = ["py314"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py314"
+extend-exclude = [".venv", "data", "reports", "notebooks", ".git"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.14"
+ignore_missing_imports = true
+warn_unused_ignores = true
+no_implicit_optional = true
+exclude = ["\\.venv", "data", "reports", "notebooks"]

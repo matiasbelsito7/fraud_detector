@@ -1,0 +1,91 @@
+Quiero que redactes un `agents.md` para un proyecto de Machine Learning de detección de fraude utilizando el dataset **IEEE-CIS Fraud Detection**.
+
+Este documento será la guía de trabajo para cualquier agente de IA que posteriormente intervenga en el repositorio.
+
+### Responsabilidad de este archivo
+
+`agents.md` debe definir **cómo deben trabajar los agentes**, no especificar en detalle los requisitos técnicos del sistema ni establecer los principios fundamentales del proyecto.
+
+La información debe dividirse de la siguiente manera:
+
+* `agents.md` → comportamiento, flujo de trabajo y responsabilidades de los agentes.
+* `constitution.md` → principios, reglas y restricciones innegociables del proyecto.
+* `specs.md` → requisitos funcionales, técnicos y comportamiento esperado del sistema.
+
+Por lo tanto, **no dupliques en `agents.md` el contenido que debería pertenecer a `constitution.md` o `specs.md`**.
+
+### Contenido esperado
+
+El `agents.md` debe establecer:
+
+1. **Contexto mínimo**
+
+   * El proyecto es un sistema de Machine Learning para detección de fraude.
+   * Dataset: IEEE-CIS Fraud Detection.
+   * El desarrollo será incremental y orientado a ML Engineering/MLOps.
+
+2. **Flujo de trabajo de los agentes**
+
+   * Inspeccionar primero el repositorio y el estado actual del proyecto.
+   * Comprender el contexto antes de modificar archivos.
+   * Planificar cambios importantes antes de implementarlos.
+   * Trabajar de manera incremental.
+   * Verificar los cambios realizados.
+   * Documentar decisiones relevantes.
+   * No asumir que una funcionalidad existe sin comprobarlo.
+
+3. **Responsabilidades**
+   Definir qué debe hacer un agente cuando:
+
+   * analiza código existente;
+   * implementa una nueva funcionalidad;
+   * modifica una funcionalidad existente;
+   * encuentra un problema;
+   * necesita tomar una decisión de arquitectura;
+   * necesita agregar o modificar tests;
+   * termina una tarea.
+
+4. **Interacción con otros documentos**
+   Establecer que los agentes deben consultar y respetar:
+
+   * `constitution.md` para las reglas y principios del proyecto;
+   * `specs.md` para los requisitos y especificaciones;
+   * documentación adicional del repositorio cuando corresponda.
+
+5. **Buenas prácticas de trabajo**
+
+   * Mantener cambios acotados a la tarea.
+   * Evitar modificaciones innecesarias.
+   * Mantener separación de responsabilidades.
+   * Evitar duplicación de lógica.
+   * Priorizar código comprensible y mantenible.
+   * No introducir complejidad sin una razón concreta.
+
+6. **Protocolo ante ambigüedades**
+   Explicar cómo debe actuar un agente cuando:
+
+   * faltan requisitos;
+   * existen varias soluciones posibles;
+   * encuentra una contradicción;
+   * detecta un problema que afecta decisiones anteriores.
+
+El documento debe ser **conciso, práctico y orientado a agentes de IA**.
+
+No incluir todavía:
+
+* especificaciones detalladas del dataset;
+* requisitos de preprocessing;
+* feature engineering;
+* métricas;
+* modelos;
+* arquitectura concreta;
+* reglas de data leakage;
+* requisitos de MLOps;
+* criterios de aceptación;
+* decisiones metodológicas específicas.
+
+Todo eso deberá definirse posteriormente en `constitution.md` y `specs.md`.
+
+Primero planificá brevemente la estructura que debería tener el documento y luego redactá el `agents.md` completo.
+
+No implementes código.

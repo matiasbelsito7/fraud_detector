@@ -1,0 +1,39 @@
+# Secretos / credenciales
+api_*.txt
+*.token
+
+# Agua/Zips
+*.zip
+*.7z
+
+# Datos (no versionar)
+/data/
+*.csv
+*.parquet
+
+# Entorno Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Entorno / herramientas
+.vscode/
+.idea/
+.env
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Artefactos y tracking
+mlruns/
+mlartifacts/
+*.pkl
+*.joblib
+*.onnx
+
+# Reportes / outputs
+reports/
+outputs/
