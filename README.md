@@ -4,7 +4,7 @@ Sistema de Machine Learning para estimar si una transacción es fraudulenta, sob
 
 ## Estado actual
 
-Fase E completada: componente de feature engineering sin información futura (tiempo, frecuencia, historial, entidades) con tests y documentación. Reporte: `docs/features_report.md`; matriz en `data/processed/train_features.parquet`.
+Fase F completada: división temporal determinista del conjunto (train/validation/test por semanas, sin información futura). Reporte: `docs/split_report.md`; `data/processed/split.parquet`.
 
 ## Documentación
 
@@ -15,6 +15,7 @@ Fase E completada: componente de feature engineering sin información futura (ti
 - `docs/eda_report.md` — conclusiones del análisis exploratorio.
 - `docs/preprocessing_report.md` — decisiones y reproducibilidad del preprocessing.
 - `docs/features_report.md` — catálogo de features y verificación de no-leakage.
+- `docs/split_report.md` — estrategia de división temporal y aislamiento del test.
 
 ## Estructura inicial
 

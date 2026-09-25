@@ -70,6 +70,8 @@ Este documento no redefine principios (`constitution.md`), reglas de trabajo (`a
 
 ## Fase F — División de datos
 
+> Completada (2026-09-25): split temporal `train` 18 sem / `validation` 4 / `test` 4, determinista y aislado; validación en `tests/test_split.py`, reporte en `docs/split_report.md`.
+
 ### T-F01 Definir y validar el split temporal
 - **Objetivo:** generar train/validation/test adecuados a datos transaccionales y temporales.
 - **Descripción:** estrategia que evite información futura en el entrenamiento; test aislado y reproducible (`specs §6`).

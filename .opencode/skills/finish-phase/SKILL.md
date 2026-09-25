@@ -22,15 +22,15 @@ Usar `uv run` (sincroniza el entorno según `pyproject.toml`/`uv.lock`). Ante cu
    uv run ruff check src tests run_*.py
    uv run ruff check --fix src tests run_*.py
    ```
-   Nota: en PowerShell el glob `run_*.py` NO se expande solo; listar los scripts existentes explícitamente (p. ej. `run_data_validation.py run_eda.py run_preprocessing.py run_feature_engineering.py`).
+   Nota: en PowerShell el glob `run_*.py` NO se expande solo; listar los scripts existentes explícitamente (p. ej. `run_data_validation.py run_eda.py run_preprocessing.py run_feature_engineering.py run_split.py`).
 2. **black** (formato):
    ```
-   uv run black --check src tests run_data_validation.py run_eda.py run_preprocessing.py run_feature_engineering.py
+   uv run black --check src tests run_data_validation.py run_eda.py run_preprocessing.py run_feature_engineering.py run_split.py
    ```
-   Si falla, formatear: `uv run black src tests run_data_validation.py run_eda.py run_preprocessing.py run_feature_engineering.py`
+   Si falla, formatear: `uv run black src tests run_data_validation.py run_eda.py run_preprocessing.py run_feature_engineering.py run_split.py`
 3. **mypy** (tipado):
    ```
-   uv run mypy src run_data_validation.py run_eda.py run_preprocessing.py run_feature_engineering.py
+   uv run mypy src run_data_validation.py run_eda.py run_preprocessing.py run_feature_engineering.py run_split.py
    ```
 4. **pytest** (tests):
    ```
