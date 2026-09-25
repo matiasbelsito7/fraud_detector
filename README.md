@@ -4,7 +4,7 @@ Sistema de Machine Learning para estimar si una transacción es fraudulenta, sob
 
 ## Estado actual
 
-Fase B completada: datos IEEE-CIS incorporados y validados (entrenamiento). Ver `reports/validation_report.json` y `tasks.md`.
+Fase C completada: análisis exploratorio (EDA) ejecutado con conclusiones escritas. Reporte: `docs/eda_report.md`; resultados y gráficos en `reports/eda/`.
 
 ## Documentación
 
@@ -12,6 +12,7 @@ Fase B completada: datos IEEE-CIS incorporados y validados (entrenamiento). Ver 
 - `constitution.md` — principios y reglas innegociables del proyecto.
 - `specs.md` — requisitos y comportamiento esperado del sistema.
 - `tasks.md` — plan de implementación en fases.
+- `docs/eda_report.md` — conclusiones del análisis exploratorio.
 
 ## Estructura inicial
 

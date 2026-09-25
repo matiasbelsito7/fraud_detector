@@ -37,6 +37,8 @@ Este documento no redefine principios (`constitution.md`), reglas de trabajo (`a
 
 ## Fase C — Data understanding y EDA
 
+> Completada (2026-09-25): EDA ejecutado; conclusiones en `docs/eda_report.md`, resultados en `reports/eda/`.
+
 ### T-C01 Ejecutar y documentar el EDA
 - **Objetivo:** conocer los datos y fundamentar las decisiones de preprocessing y feature engineering.
 - **Descripción:** analizar tipos, missing values, cardinalidad, distribuciones, distribución de fraude, comportamiento temporal, relaciones relevantes y anomalías, conforme `specs §3`.
