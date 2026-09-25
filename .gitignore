@@ -37,3 +37,6 @@ mlartifacts/
 # Reportes / outputs
 reports/
 outputs/
+
+# Archivos temporales / prompts locales (no se versionan)
+tmp/
