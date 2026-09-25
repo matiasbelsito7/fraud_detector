@@ -4,7 +4,7 @@ Sistema de Machine Learning para estimar si una transacción es fraudulenta, sob
 
 ## Estado actual
 
-Fase D completada: pipeline de preprocessing reproducible (missing, encodings, scaling) con tests (pytest). Reporte: `docs/preprocessing_report.md`; artefactos en `artifacts/` y `data/processed/`.
+Fase E completada: componente de feature engineering sin información futura (tiempo, frecuencia, historial, entidades) con tests y documentación. Reporte: `docs/features_report.md`; matriz en `data/processed/train_features.parquet`.
 
 ## Documentación
 
@@ -14,6 +14,7 @@ Fase D completada: pipeline de preprocessing reproducible (missing, encodings, s
 - `tasks.md` — plan de implementación en fases.
 - `docs/eda_report.md` — conclusiones del análisis exploratorio.
 - `docs/preprocessing_report.md` — decisiones y reproducibilidad del preprocessing.
+- `docs/features_report.md` — catálogo de features y verificación de no-leakage.
 
 ## Estructura inicial
 

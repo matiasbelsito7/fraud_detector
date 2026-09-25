@@ -59,6 +59,8 @@ Este documento no redefine principios (`constitution.md`), reglas de trabajo (`a
 
 ## Fase E — Feature engineering
 
+> Completada (2026-09-25): features en `src/features/`, documentación en `docs/features_report.md`, tests sin leakage.
+
 ### T-E01 Implementar componente de feature engineering
 - **Objetivo:** generar features fundamentadas sobre tiempo, frecuencia, historial, importes, entidades y relaciones.
 - **Descripción:** implementar el componente separado (`specs §5`), documentando cada feature relevante (qué representa, cómo se calcula, qué información utiliza, disponibilidad en inferencia).
