@@ -13,32 +13,32 @@ Cada vez que se termina una fase de `tasks.md`, ejecutar este procedimiento **co
 - Asegurarse de que los datos y artefactos grandes no estén trackeados (`.gitignore`).
 - No dejar archivos secretos trackeables (`api_*.txt`, tokens).
 
-## 2. Chequeos de calidad (en este orden, todos contra `.venv`)
+## 2. Chequeos de calidad (en este orden)
 
-Usar el intérprete del entorno virtual. Ante cualquier fallo, corregir el código y repetir el check hasta que pase.
+Usar `uv run` (sincroniza el entorno según `pyproject.toml`/`uv.lock`). Ante cualquier fallo, corregir el código y repetir el check hasta que pase.
 
 1. **ruff** (lint + fix automático):
    ```
-   .\.venv\Scripts\python.exe -m ruff check src run_*.py
-   .\.venv\Scripts\python.exe -m ruff check --fix src run_*.py
+   uv run ruff check src run_*.py
+   uv run ruff check --fix src run_*.py
    ```
    Nota: en PowerShell el glob `run_*.py` NO se expande solo; listar los scripts existentes explícitamente (p. ej. `run_data_validation.py`).
 2. **black** (formato):
    ```
-   .\.venv\Scripts\python.exe -m black --check src run_data_validation.py
+   uv run black --check src run_data_validation.py
    ```
-   Si falla, formatear: `.\.venv\Scripts\python.exe -m black src run_data_validation.py`
+   Si falla, formatear: `uv run black src run_data_validation.py`
 3. **mypy** (tipado):
    ```
-   .\.venv\Scripts\mypy.exe src run_data_validation.py
+   uv run mypy src run_data_validation.py
    ```
 
 ## 3. Pre-commit
 
-- Instalar los hooks una única vez si aún no están: `.\.venv\Scripts\pre-commit.exe install`
+- Instalar los hooks una única vez si aún no están: `uv run pre-commit install`
 - Ejecutar sobre todo el repo:
   ```
-  .\.venv\Scripts\pre-commit.exe run --all-files
+  uv run pre-commit run --all-files
   ```
 - Si un hook modifica/falla, arreglar lo señalado y volver a correr hasta que pase.
 

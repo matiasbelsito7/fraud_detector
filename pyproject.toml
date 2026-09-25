@@ -1,3 +1,32 @@
+[project]
+name = "fraud-detector"
+version = "0.1.0"
+description = "Sistema de Machine Learning para detección de fraude (IEEE-CIS Fraud Detection)."
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "pandas>=2.0",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "scikit-learn>=1.4",
+    "matplotlib>=3.8",
+    "seaborn>=0.13",
+    "jupyter>=1.0",
+    "ipykernel>=6.29",
+    "kaggle>=2.2",
+]
+
+[dependency-groups]
+dev = [
+    "ruff==0.16.9",
+    "black==26.5.1",
+    "mypy==2.3.1",
+    "pre-commit==4.6.2",
+]
+
+[tool.uv]
+package = false
+
 [tool.black]
 line-length = 88
 target-version = ["py314"]

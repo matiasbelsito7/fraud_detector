@@ -16,14 +16,14 @@ Este documento no redefine principios (`constitution.md`), reglas de trabajo (`a
 - **Objetivo:** definir una organización inicial que soporte desarrollo incremental.
 - **Descripción:** crear la estructura de carpetas y archivos de configuración mínima (sin fijar arbitrariamente decisiones no tomadas en `specs.md §14`).
 - **Dependencias:** ninguna.
-- **Archivos/componentes probables:** `.gitignore`, `requirements.txt` (o similar), README breve, carpeta de datos (sin versionar), carpetas de código y config.
+- **Archivos/componentes probables:** `.gitignore`, `pyproject.toml` (declaración de dependencias), README breve, carpeta de datos (sin versionar), carpetas de código y config.
 - **Verificación:** se puede clonar/abrir el repo y ejecutar un comando de referencia sin errores.
 
 ### T-A02 Configurar entorno de Python y dependencias
 - **Objetivo:** disponer de un entorno reproducible para todo el desarrollo.
 - **Descripción:** definir versiones de Python y de librerías core (pandas, numpy, scikit-learn, y las que se incorporen según fase).
 - **Dependencias:** T-A01.
-- **Archivos/componentes probables:** requirements / entorno virtual / config de instalación.
+- **Archivos/componentes probables:** dependencias declaradas en `pyproject.toml`, entorno virtual gestionado con `uv`, lock de versiones (`uv.lock`).
 - **Verificación:** un script trivial que importe las librerías principales se ejecuta sin errores.
 
 ## Fase B — Adquisición y validación de datos

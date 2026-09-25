@@ -28,6 +28,7 @@ Estructura provisional; puede ajustarse según las decisiones tomadas en fases s
 
 ## Entorno
 
-- Python 3.14
-- Dependencias core en `requirements.txt`
-- Entorno virtual: `.venv/` (no versionado)
+- Python 3.14, gestionado con **uv**.
+- Dependencias declaradas en `pyproject.toml` (grupo de desarrollo en `[dependency-groups]`); versiones bloqueadas en `uv.lock`.
+- Entorno virtual: `.venv/` (no versionado). Sincronizar con `uv sync`.
+- Ejecutar scripts y herramientas con `uv run ...` (p. ej. `uv run run_eda.py`).
