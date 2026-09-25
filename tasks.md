@@ -48,6 +48,8 @@ Este documento no redefine principios (`constitution.md`), reglas de trabajo (`a
 
 ## Fase D — Preprocessing
 
+> Completada (2026-09-25): pipeline reproducible en `src/preprocessing/`, tests en `tests/`, decisiones en `docs/preprocessing_report.md`.
+
 ### T-D01 Construir pipeline reproducible de preprocessing
 - **Objetivo:** transformar los datos de forma reproducible y reusable en inferencia.
 - **Descripción:** implementar el pipeline según lo que determine el EDA (`specs §4`): missing values, categóricas, numéricas, encoding, scaling, eliminación/conservación justificada de variables.

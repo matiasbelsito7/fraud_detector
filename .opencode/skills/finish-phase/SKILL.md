@@ -19,18 +19,22 @@ Usar `uv run` (sincroniza el entorno según `pyproject.toml`/`uv.lock`). Ante cu
 
 1. **ruff** (lint + fix automático):
    ```
-   uv run ruff check src run_*.py
-   uv run ruff check --fix src run_*.py
+   uv run ruff check src tests run_*.py
+   uv run ruff check --fix src tests run_*.py
    ```
-   Nota: en PowerShell el glob `run_*.py` NO se expande solo; listar los scripts existentes explícitamente (p. ej. `run_data_validation.py`).
+   Nota: en PowerShell el glob `run_*.py` NO se expande solo; listar los scripts existentes explícitamente (p. ej. `run_data_validation.py run_eda.py run_preprocessing.py`).
 2. **black** (formato):
    ```
-   uv run black --check src run_data_validation.py
+   uv run black --check src tests run_data_validation.py run_eda.py run_preprocessing.py
    ```
-   Si falla, formatear: `uv run black src run_data_validation.py`
+   Si falla, formatear: `uv run black src tests run_data_validation.py run_eda.py run_preprocessing.py`
 3. **mypy** (tipado):
    ```
-   uv run mypy src run_data_validation.py
+   uv run mypy src run_data_validation.py run_eda.py run_preprocessing.py
+   ```
+4. **pytest** (tests):
+   ```
+   uv run pytest
    ```
 
 ## 3. Pre-commit

@@ -4,7 +4,7 @@ Sistema de Machine Learning para estimar si una transacción es fraudulenta, sob
 
 ## Estado actual
 
-Fase C completada: análisis exploratorio (EDA) ejecutado con conclusiones escritas. Reporte: `docs/eda_report.md`; resultados y gráficos en `reports/eda/`.
+Fase D completada: pipeline de preprocessing reproducible (missing, encodings, scaling) con tests (pytest). Reporte: `docs/preprocessing_report.md`; artefactos en `artifacts/` y `data/processed/`.
 
 ## Documentación
 
@@ -13,6 +13,7 @@ Fase C completada: análisis exploratorio (EDA) ejecutado con conclusiones escri
 - `specs.md` — requisitos y comportamiento esperado del sistema.
 - `tasks.md` — plan de implementación en fases.
 - `docs/eda_report.md` — conclusiones del análisis exploratorio.
+- `docs/preprocessing_report.md` — decisiones y reproducibilidad del preprocessing.
 
 ## Estructura inicial
 
