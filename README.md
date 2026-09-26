@@ -4,7 +4,7 @@ Sistema de Machine Learning para estimar si una transacción es fraudulenta, sob
 
 ## Estado actual
 
-Fase F completada: división temporal determinista del conjunto (train/validation/test por semanas, sin información futura). Reporte: `docs/split_report.md`; `data/processed/split.parquet`.
+Fase G completada: baselines y modelos de referencia comparados bajo condiciones equivalentes (baseline → clásicos → boosting), ajustados en `train` y evaluados en `validation`. El `test` permanece intacto. Reporte: `docs/modeling_report.md`; resultados en `reports/modeling/comparison.{csv,json}`.
 
 ## Documentación
 
@@ -16,15 +16,29 @@ Fase F completada: división temporal determinista del conjunto (train/validatio
 - `docs/preprocessing_report.md` — decisiones y reproducibilidad del preprocessing.
 - `docs/features_report.md` — catálogo de features y verificación de no-leakage.
 - `docs/split_report.md` — estrategia de división temporal y aislamiento del test.
+- `docs/modeling_report.md` — escalera de modelos, comparación y reproducibilidad del entrenamiento.
+
+## Pipeline de ejecución
+
+Los scripts se ejecutan en orden, cada uno consumiendo la salida del anterior:
+
+```
+uv run run_data_validation.py
+uv run run_eda.py
+uv run run_preprocessing.py
+uv run run_feature_engineering.py
+uv run run_split.py
+uv run run_training.py
+```
 
 ## Estructura inicial
 
 ```
-data/        Datos raw (no versionados; se agregan en Fase B)
+data/        Datos raw y derivados (no versionados)
 notebooks/   Análisis exploratorio (EDA)
 src/         Código del proyecto (paquete Python)
 config/      Configuración (a definir en fases posteriores)
-tests/       Tests (se incorporan en fases posteriores)
+tests/       Tests automatizados
 ```
 
 Estructura provisional; puede ajustarse según las decisiones tomadas en fases siguientes (`specs.md §14`).

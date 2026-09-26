@@ -81,6 +81,8 @@ Este documento no redefine principios (`constitution.md`), reglas de trabajo (`a
 
 ## Fase G — Baselines y modelado
 
+> Completada (2026-09-25): escalera de modelos en `src/modeling/`, ejecución `run_training.py`, 19 tests, decisiones y resultados en `docs/modeling_report.md`. Comparación en `reports/modeling/comparison.{csv,json}`; dos ejecuciones completas dieron métricas idénticas. `test` no se carga. Pliegues walk-forward internos de `train` implementados (uso en Fase H).
+
 ### T-G01 Entrenar y comparar modelos progresivamente
 - **Objetivo:** obtener baseline y modelos de referencia bajo condiciones equivalentes.
 - **Descripción:** baseline simple → modelos clásicos → modelos de boosting (`specs §7`), comparables en la misma división/features/evaluación.
