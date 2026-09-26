@@ -312,8 +312,8 @@ def test_modelo_final_serializa_y_predice_identico(tmp_path) -> None:
     joblib.dump(estimator, path)
     restored = joblib.load(path)
     np.testing.assert_array_equal(
-        estimator.predict_proba(valid.X)[:, 1],
-        restored.predict_proba(valid.X)[:, 1],
+        np.asarray(estimator.predict_proba(valid.X))[:, 1],
+        np.asarray(restored.predict_proba(valid.X))[:, 1],
     )
 
 
@@ -334,5 +334,6 @@ def test_el_ajuste_final_es_reproducible() -> None:
     a = fit_final(_fast_params(), best_iteration=15, train=train, seed=42)
     b = fit_final(_fast_params(), best_iteration=15, train=train, seed=42)
     np.testing.assert_allclose(
-        a.predict_proba(valid.X)[:, 1], b.predict_proba(valid.X)[:, 1]
+        np.asarray(a.predict_proba(valid.X))[:, 1],
+        np.asarray(b.predict_proba(valid.X))[:, 1],
     )

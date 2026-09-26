@@ -45,12 +45,12 @@ Las tasas de fraude (3.4–3.5%) son homogéneas entre conjuntos, lo que permite
 ## 5. En qué momento se usa cada conjunto
 
 - **train**: ajuste de modelos (Fase G) y validación cruzada temporal **interna** solo dentro de train.
-- **validation**: selección de hiperparámetros y decisiones de diseño (Fase G/H), antes del test.
-- **test**: evaluación final única, al cierre (Fase H). Aislado: nunca se usa para decidir.
+- **validation**: selección de hiperparámetros y decisiones de diseño (Fase G/H) y calibración del umbral operativo (Fase I), antes del test.
+- **test**: evaluación final única (Fase I). Aislado: nunca se usa para decidir.
 
 ## 6. Aislamiento del test
 
-- El test queda apartado desde esta fase y se consume una sola vez al cierre de la Fase H.
+- El test queda apartado desde esta fase y se consume una sola vez en `run_evaluation.py` (Fase I), tras verificar que el umbral ya está registrado en `reports/evaluation/threshold.json`.
 - Las features ya se construyeron sin información futura (Fase E), de modo que ninguna feature de una fila de test usa filas de validation/train posteriores en el tiempo; y ninguna fila de train/validation usa filas de test (las preceden siempre).
 - `split.parquet` es el registro canónico `TransactionID -> split_set`, reproducible.
 

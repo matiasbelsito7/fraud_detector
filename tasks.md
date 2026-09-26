@@ -110,6 +110,7 @@ Este documento no redefine principios (`constitution.md`), reglas de trabajo (`a
 - **Dependencias:** T-H01.
 - **Archivos/componentes probables:** script/notebook de evaluación, reporte de métricas, curvas.
 - **Verificación (specs §15 — métricas calculables):** las métricas mínimas se calculan sin errores sobre el test aislado.
+- **Estado: COMPLETADA.** Umbral operativo `0,029329` fijado en `validation` antes de leer `test`. Resultado en `test`: ROC-AUC 0,9025, PR-AUC 0,5282, recall 0,7707 [0,7551, 0,7864], precision 0,1708, 15,94 % de alertas. **El objetivo de recall ≥ 0,80 no se cumple**: hay deriva temporal (recall 0,8161 → 0,8002 → 0,7707 en train OOF / validation / test). Reporte en `docs/evaluation_report.md`; resultados en `reports/evaluation/`. `test` queda consumido y no debe reutilizarse para decidir.
 
 ## Fase J — Explainability
 
