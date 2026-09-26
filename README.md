@@ -4,7 +4,7 @@ Sistema de Machine Learning para estimar si una transacción es fraudulenta, sob
 
 ## Estado actual
 
-Fase G completada: baselines y modelos de referencia comparados bajo condiciones equivalentes (baseline → clásicos → boosting), ajustados en `train` y evaluados en `validation`. El `test` permanece intacto. Reporte: `docs/modeling_report.md`; resultados en `reports/modeling/comparison.{csv,json}`.
+Fase H completada: búsqueda de 20 configuraciones de LightGBM sobre 3 pliegues walk-forward internos de `train`, con la configuración de la Fase G como ancla. El modelo definitivo quedó ajustado sobre `train` y confirmado **una sola vez** en `validation`; el `test` permanece intacto y se consumirá en la Fase I. Reporte: `docs/tuning_report.md`; resultados en `reports/tuning/`, modelo en `artifacts/model_final.joblib`.
 
 ## Documentación
 
@@ -17,6 +17,7 @@ Fase G completada: baselines y modelos de referencia comparados bajo condiciones
 - `docs/features_report.md` — catálogo de features y verificación de no-leakage.
 - `docs/split_report.md` — estrategia de división temporal y aislamiento del test.
 - `docs/modeling_report.md` — escalera de modelos, comparación y reproducibilidad del entrenamiento.
+- `docs/tuning_report.md` — protocolo de búsqueda, selección del modelo final y riesgos abiertos.
 
 ## Pipeline de ejecución
 
@@ -29,16 +30,19 @@ uv run run_preprocessing.py
 uv run run_feature_engineering.py
 uv run run_split.py
 uv run run_training.py
+uv run run_tuning.py
 ```
 
 ## Estructura inicial
 
 ```
-data/        Datos raw y derivados (no versionados)
-notebooks/   Análisis exploratorio (EDA)
-src/         Código del proyecto (paquete Python)
-config/      Configuración (a definir en fases posteriores)
-tests/       Tests automatizados
+artifacts/  Modelos serializados (no versionados)
+data/       Datos raw y derivados (no versionados)
+notebooks/  Análisis exploratorio (EDA)
+reports/    Resultados de las fases (no versionados)
+src/        Código del proyecto (paquete Python)
+config/     Configuración (a definir en fases posteriores)
+tests/      Tests automatizados
 ```
 
 Estructura provisional; puede ajustarse según las decisiones tomadas en fases siguientes (`specs.md §14`).

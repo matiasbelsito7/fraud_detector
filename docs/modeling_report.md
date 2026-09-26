@@ -14,7 +14,7 @@ Entrenar y comparar candidatos **bajo condiciones equivalentes** (misma divisió
 | `validation` | 77.822 | Comparación y métricas reportadas |
 | `test` | 78.542 | **No se carga.** `load_splits` recibe `EVAL_SETS=(train, validation)` y `run_training.py` verifica con `assert` que `test` no está presente |
 
-El test sigue reservado para el cierre de la Fase H (`docs/split_report.md` §6). Los hiperparámetros de `src/modeling/models.py` son **referencias fijas, no resultados de tuning**: no se iterated ningún valor contra `validation` más de una vez.
+El test sigue reservado para la evaluación final de la Fase I (`docs/split_report.md` §6). Los hiperparámetros de `src/modeling/models.py` son **referencias fijas, no resultados de tuning**: no se iterated ningún valor contra `validation` más de una vez. En la Fase H el ancla de esta fase se comparó contra 19 configuraciones alternativas sobre pliegues internos de `train` (`docs/tuning_report.md`).
 
 ## 3. Matriz de modelado
 
@@ -92,7 +92,7 @@ Referencias: PR-AUC del base rate en `validation` = 0,0339 (`dummy_prior` la igu
 
 - **No hay resultado sobre `test`.** Todas las cifras son de `validation`, un periodo de 4 semanas posterior al de entrenamiento. No son evidencia de rendimiento en producción (`constitution.md` §10).
 - `random_forest` y `logreg` arrastran el handicap de la submuestra de 120k filas (§4); reentrenarlos sobre `train` completo podría elevarlos.
-- **Fase H:** tuning sobre los pliegues walk-forward de §5 y sobre `validation`, con el test intacto. Candidatos naturales: `num_leaves`, `min_child_samples`, `colsample_bytree`, y la decisión entre `lgbm` y `lgbm_pos_weight`.
+- **Fase H (completada):** tuning sobre los pliegues walk-forward de §5, con `test` intacto. La configuración de referencia de esta fase resultó casi óptima: la ganadora del tuning la superó en solo +0,0019 de PR-AUC medio, dentro del ruido entre pliegues. Ver `docs/tuning_report.md`.
 - **Fase I:** barrido de umbrales y elección justificada del operativo sobre el test aislado.
 - **Fase K (MLflow):** pendiente. `specs.md` §10 lo hace obligatorio; se integra después de G para no mezclar dos tareas de `tasks.md`. Los resultados de esta fase están en JSON/CSV para poder importarse como runs.
 - **Fase J:** la utilidad real de las 17 features de la Fase E y de las 745 del preprocessing todavía no está medida; solo se infiere de las importancias.

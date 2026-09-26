@@ -92,12 +92,15 @@ Este documento no redefine principios (`constitution.md`), reglas de trabajo (`a
 
 ## Fase H — Tuning de hiperparámetros
 
+> Completada (2026-09-26): espacio y búsqueda en `src/modeling/{space,tuning}.py`, ejecución `run_tuning.py`, 21 tests, búsqueda de 20 configs × 3 pliegues en `reports/tuning/search.{csv,json}` y modelo final en `artifacts/model_final.joblib`; selección y resultados en `docs/tuning_report.md`. `test` no se carga; `validation` se usó una sola vez, como confirmación. Resultado negativo en ganancia: la config ganadora supera al ancla de Fase G en +0,0019 PR-AUC, muy por debajo del ruido entre pliegues (±0,05).
+
 ### T-H01 Ajustar hiperparámetros y seleccionar modelo
 - **Objetivo:** mejorar el modelo con base en criterios y sin contaminar el test.
 - **Descripción:** tuning sobre validation cuando las etapas anteriores lo justifiquen; selección final con las mismas condiciones de evaluación (`specs §7`).
 - **Dependencias:** T-G01.
 - **Archivos/componentes probables:** configuración de tuning, registros de config y resultados.
 - **Verificación (specs §15 — test aislado):** el test no se usa en el tuning; la selección queda justificada y reproducible.
+- **Nota de ejecución:** la búsqueda se hizo sobre los pliegues walk-forward internos de `train` (no sobre `validation`), siguiendo `constitution.md §5`; `validation` quedó como confirmación única. Desviación documentada en `docs/tuning_report.md` §2.
 
 ## Fase I — Evaluación final
 
