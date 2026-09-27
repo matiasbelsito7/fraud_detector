@@ -8,6 +8,8 @@ Fase I completada. El modelo final de la Fase H (LightGBM, configuración 18) ti
 
 **El objetivo de negocio de recall ≥ 0,80 no se cumple en `test`**: hay deriva temporal (recall 0,8161 → 0,8002 → 0,7707 en train OOF, validation y test). `test` ya no puede volver a usarse para decidir nada. Reporte: `docs/evaluation_report.md`; resultados en `reports/evaluation/`.
 
+**Próximo trabajo (T-E02, pendiente):** agregar identidad de cliente (`card1+addr1`) como clave de feature engineering, la vía que la referencia de la competencia usó para llegar a ROC-AUC 0,946 y que aquí no tenemos. Medido en nuestro split, la clave correcta es `card1+addr1` (95,1 % de cobertura) y no el UID completo de la referencia (34,4 %). Análisis y decisiones en `docs/client_features_report.md`. **Importante:** al ser selección de features, `test` no se volverá a leer para evaluar este cambio; se certifica solo con train out-of-fold y `validation`.
+
 ## Documentación
 
 - `agents.md` — cómo trabajan los agentes.
@@ -21,6 +23,7 @@ Fase I completada. El modelo final de la Fase H (LightGBM, configuración 18) ti
 - `docs/modeling_report.md` — escalera de modelos, comparación y reproducibilidad del entrenamiento.
 - `docs/tuning_report.md` — protocolo de búsqueda, selección del modelo final y riesgos abiertos.
 - `docs/evaluation_report.md` — fijación del umbral, resultado en `test` y conclusión sobre el objetivo de recall.
+- `docs/client_features_report.md` — análisis de identidad de cliente y plan T-E02 (pendiente).
 
 ## Pipeline de ejecución
 
