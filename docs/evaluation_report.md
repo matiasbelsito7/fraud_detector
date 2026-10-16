@@ -5,15 +5,18 @@
 ## Que se midio y con que reglas
 
 La evaluacion final se ejecuta en `run_evaluation.py`, unico punto del pipeline
-que lee `test`. Antes de tocarlo se verifican tres precondiciones:
+que lee `test`. Antes de tocarlo se verifica el candado de consumo y tres
+precondiciones:
 
+0. el candado `config/test_consumed.json` no registra consumos previos de `test`
+   (salvo `--force` explicito, que deja traza de la reutilizacion);
 1. existe `reports/evaluation/threshold.json`, escrito por `run_threshold.py`;
 2. el digest de `split.parquet` sigue coincidiendo con el registrado en `threshold.json` (en la ejecución de la Fase I, `6d612a6a…`);
 3. la config del umbral coincide con la config seleccionada en `run_tuning.py`.
 
 Si cualquiera falla, el script aborta sin puntuar nada. Todas las metricas se
 calculan con el umbral ya registrado: no se busca ningun parametro ni ningun
-umbral aqui. La precondicion 2 era entonces una barrera real (cualquier cambio de datos la hacia fallar); hoy ya no lo es, por el motivo que se explica al final de este reporte.
+umbral aqui. La precondicion 2 era entonces una barrera real (cualquier cambio de datos la hacia fallar); tras T-E02 dejo de serlo, y es el candado (0) el que hoy impide una segunda lectura, porque no depende de los datos. Al completarse una evaluacion, el script anade un registro a `config/test_consumed.json`, de modo que la propia ejecucion arma el candado para la siguiente.
 
 ## Como se fijo el umbral (y por que no en train)
 
@@ -113,4 +116,4 @@ uv run run_threshold.py   # fija el umbral; NO carga test
 uv run run_evaluation.py  # unico consumo de test
 ```
 
-Esas tres ordenes son las de la Fase I. `run_evaluation.py` no debe volver a ejecutarse, y **su proteccion tecnica se perdio con T-E02**: la comprobacion de digest compara `split.parquet` contra el registrado en `threshold.json`, y `run_threshold.py` se re-ejecuto para T-E02 y regenero ese archivo con el digest vigente (`162c566a...`). Hoy las tres precondiciones pasan y el script consumiria `test` por segunda vez si alguien lo lanza. El unico freno que queda es la regla de `constitution.md` 5 y de `tasks.md` T-E02, mas el registro de que `test` ya se consumio (`reports/evaluation/fase_i_baseline/test_metrics.json`).
+Esas tres ordenes son las de la Fase I. `run_evaluation.py` no debe volver a ejecutarse. La comprobacion de digest **dejo de proteger** con T-E02, porque `run_threshold.py` se re-ejecuto y regenero `threshold.json` con el digest vigente (`162c566a...`); por eso se anadio el candado `config/test_consumed.json`, que registra cada consumo con independencia de los datos y hace abortar al script si `test` ya figura consumido. La Fase I quedo registrada en `reports/evaluation/fase_i_baseline/test_metrics.json` y como primer consumo del candado. Volver a leer `test` exige `uv run run_evaluation.py --force`, que deja traza en el propio candado; sigue vigente la regla de `constitution.md` 5 y de `tasks.md`.

@@ -41,7 +41,7 @@ uv run run_threshold.py
 uv run run_evaluation.py
 ```
 
-`run_threshold.py` fija el umbral y **no carga `test`**. `run_evaluation.py` es el único script que lo lee, y aborta si el umbral no está registrado, si la config no coincide o si el digest de los datos cambió respecto al registrado en `threshold.json`. Ya se ejecutó una vez (Fase I) y **no debe volver a ejecutarse**. Ojo: esa última comprobación **ya no protege**, porque `run_threshold.py` se re-ejecutó para T-E02 y regeneró `threshold.json` con el digest vigente; hoy todas las precondiciones pasarían. La protección real es la regla de `constitution.md` §5 y de `tasks.md`, y el registro de que `test` ya se consumió (`reports/evaluation/fase_i_baseline/test_metrics.json`).
+`run_threshold.py` fija el umbral y **no carga `test`**. `run_evaluation.py` es el único script que lo lee, y aborta si ya figura consumido, si el umbral no está registrado, si la config no coincide o si el digest de los datos cambió respecto al registrado en `threshold.json`. Ya se ejecutó una vez (Fase I) y **no debe volver a ejecutarse**. La comprobación de digest **ya no protege** por sí sola, porque `run_threshold.py` se re-ejecutó para T-E02 y regeneró `threshold.json` con el digest vigente; el freno efectivo es ahora el candado `config/test_consumed.json`, que registra cada consumo de `test` con independencia de los datos y bloquea la ejecución salvo `--force` explícito (que deja traza). El registro de la Fase I está en `reports/evaluation/fase_i_baseline/test_metrics.json`.
 
 ## Estructura inicial
 

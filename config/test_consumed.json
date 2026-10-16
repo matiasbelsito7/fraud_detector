@@ -1,0 +1,14 @@
+{
+  "descripcion": "Registro de consumos del conjunto test (constitution.md §5). run_evaluation.py aborta si esta lista no esta vacia, salvo --force explicito. Independiente del digest de threshold.json, que dejo de proteger al re-ejecutarse run_threshold.py para T-E02.",
+  "consumos": [
+    {
+      "fase": "Fase I (T-I01)",
+      "fecha": "2026-09-26",
+      "digest_split": "6d612a6ad9c4328088a91fc4278cd4b3d890e73fa44769df27746f0282c97e6a",
+      "config_id": 18,
+      "rounds": 219,
+      "reporte": "reports/evaluation/fase_i_baseline/test_metrics.json",
+      "forzado": false
+    }
+  ]
+}

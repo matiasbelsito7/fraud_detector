@@ -256,3 +256,40 @@ def test_extract_sigue_excluyendo_test_por_default() -> None:
     assert "f" in out.X.columns
     assert "isFraud" not in out.X.columns
     assert "split_set" not in out.X.columns
+
+
+def test_el_candado_no_dispara_sin_registros(tmp_path) -> None:
+    from run_evaluation import check_not_consumed
+
+    assert check_not_consumed(tmp_path / "no_existe.json", force=False) == []
+
+
+def test_el_candado_aborta_si_test_ya_fue_consumido(tmp_path) -> None:
+    from run_evaluation import check_not_consumed, register_consumption
+
+    sentinel = tmp_path / "test_consumed.json"
+    register_consumption(sentinel, {"fase": "Fase I (T-I01)"})
+    with pytest.raises(RuntimeError, match="ya fue consumido"):
+        check_not_consumed(sentinel, force=False)
+
+
+def test_el_candado_permite_forzar_dejando_traza(tmp_path) -> None:
+    from run_evaluation import check_not_consumed, register_consumption
+
+    sentinel = tmp_path / "test_consumed.json"
+    register_consumption(sentinel, {"fase": "Fase I (T-I01)"})
+    previos = check_not_consumed(sentinel, force=True)
+    assert len(previos) == 1
+    register_consumption(sentinel, {"forzado": True})
+    consumos = check_not_consumed(sentinel, force=True)
+    assert len(consumos) == 2
+    assert consumos[-1]["forzado"] is True
+
+
+def test_el_candado_versionado_registra_la_fase_i() -> None:
+    """El candado debe estar armado: sin esto, la proteccion seria teorica."""
+    from run_evaluation import SENTINEL_FILE, load_consumptions
+
+    consumos = load_consumptions(SENTINEL_FILE)
+    assert consumos, "config/test_consumed.json debe registrar el consumo de Fase I"
+    assert any(c.get("fase", "").startswith("Fase I") for c in consumos)
