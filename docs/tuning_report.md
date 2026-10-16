@@ -1,6 +1,6 @@
 # Tuning y selección de modelo — Fase H
 
-Fecha: 2026-09-26. Módulos: `src/modeling/space.py`, `src/modeling/tuning.py`; ejecución: `run_tuning.py`. Salidas (gitignored): `reports/tuning/search.csv`, `reports/tuning/search.json`, `reports/tuning/selected.json`, `artifacts/model_final.joblib`.
+Fecha: 2026-09-26; segunda ejecución con T-E02 el 2026-09-28 (§10). Módulos: `src/modeling/space.py`, `src/modeling/tuning.py`; ejecución: `run_tuning.py`. Salidas (gitignored): `reports/tuning/search.csv`, `reports/tuning/search.json`, `reports/tuning/selected.json`, `artifacts/model_final.joblib`.
 
 ## 1. Alcance
 
@@ -169,3 +169,27 @@ El número de rondas se toma de la mediana de los pliegues y **no** se ajusta co
 - **Fase I:** barrido de umbrales y elección justificada del operativo sobre el `test` aislado.
 - **Fase J:** la utilidad de las 17 features de la Fase E sigue sin medirse de forma directa.
 - **Fase K (MLflow):** pendiente. `search.json` y `selected.json` están en JSON plano para poder importarse como runs.
+
+## 10. Segunda ejecución con identidad de cliente (T-E02, 2026-09-28)
+
+`run_tuning.py` se volvió a ejecutar **completo** (mismas 20 configuraciones, mismo `seed=42`, mismos 3 pliegues) sobre el set ampliado por T-E02: 791 features en lugar de 762. Es la única variable de diseño que cambia respecto de §5, lo que permite comparar búsquedas directamente. 60 ajustes, 87 min.
+
+Resultados y comparación por pliegue en `docs/client_features_report.md`. Resumen:
+
+| | Fase H | T-E02 | Δ |
+|---|---:|---:|---:|
+| Ganadora | config 18, 219 rondas, PR-AUC OOF 0,633573 | config 11, 439 rondas, PR-AUC OOF 0,640227 | +0,006654 |
+| Δ por pliegue | [0,6727, 0,5557, 0,6723] | [0,6830, 0,5667, 0,6709] | **[+0,0104, +0,0110, −0,0014]** |
+| Ancla (config 0) | PR-AUC OOF 0,631655 | PR-AUC OOF 0,630059 | −0,001596 |
+| Δ por pliegue | [0,6782, 0,5482, 0,6686] | [0,6692, 0,5568, 0,6641] | **[−0,0089, +0,0086, −0,0044]** |
+| `validation` PR-AUC | 0,5814 | 0,6079 | +0,0266 |
+| `validation` ROC-AUC | 0,9262 | 0,9274 | +0,0011 |
+
+La config ganadora es `num_leaves=255`, `learning_rate=0.10`, `min_child_samples=20`, `colsample_bytree=1.0`, `subsample=0.8`, `reg_lambda=10.0`, `reg_alpha=0.0`, `scale_pos_weight=1.0`, con 439 rondas; el artefacto actual `artifacts/model_final.joblib` (12,5 MB) es este. El de Fase H quedó archivado en `artifacts/model_final_fase_h.joblib` (3,1 MB), y sus salidas en `reports/tuning/baseline_fase_h/`.
+
+Dos consecuencias para este reporte:
+
+1. **La ganancia aparente no es atribuible a las features.** La comparación que aísla el set de columnas es la del ancla —mismos hiperparámetros, única variable distinta— y da **−0,0016 con los tres signos distintos**. La diferencia entre 0,6336 y 0,6402 se explica por la configuración elegida, no por las 29 columnas de cliente. La mejora tampoco es consistente en los 3 pliegues, que era el criterio fijado de antemano.
+2. **La conclusión de §6 no cambia:** con ±0,05 de dispersión entre pliegues, +0,0067 de media está dentro del ruido del experimento. Sigue sin haber una forma de distinguir la ganadora del ancla con este diseño, y ahora tampoco de distinguir un set de features de otro.
+
+El umbral operativo se fijó después con `run_threshold.py` sobre `validation` (0,008480; recall 0,8002, precision 0,2399, 11,30 % de alertas frente a 12,87 % del modelo de Fase H). **`test` no se volvió a leer**; la Fase I sigue siendo la única消費ición, y sus cifras corresponden al modelo de Fase H sin features de cliente.

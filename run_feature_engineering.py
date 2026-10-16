@@ -7,7 +7,9 @@ import numpy as np
 import pandas as pd
 
 from src.data.validation import load_identity, load_transaction
-from src.features.features import KEY, compute_features
+from src.features.client import AGG_COLS, client_features, refined_uid
+from src.features.columns import ADDR1, CARD1, DT, KEY
+from src.features.features import compute_features
 
 ROOT = Path(__file__).resolve().parent
 
@@ -24,6 +26,43 @@ def _frame_digest(df: pd.DataFrame) -> str:
     return hashlib.sha256(np.ascontiguousarray(values)).hexdigest()
 
 
+def _client_coverage(txn: pd.DataFrame) -> None:
+    """Cuanto de la matriz de cliente es valor real y cuanto es centinela.
+
+    Una clave con poca cobertura produce centinelas: no rompe nada, pero su
+    contribucion al modelo es nula. Sin este dato no se puede distinguir "el
+    nivel refinado no aporta" de "el nivel refinado casi nunca aplica".
+
+    Ojo con el alcance de la cifra: mide historial **dentro del propio frame**, no
+    entre periodos. Cuantas filas de la ventana de test tienen historia del cliente
+    en la ventana de entrenamiento es otra pregunta, y se mide en
+    `docs/client_features_report.md` sobre `split.parquet`.
+    """
+    ordered = txn.sort_values(DT, kind="stable")
+    client = client_features(ordered)
+    uid = refined_uid(ordered)
+    primary = ordered.groupby([CARD1, ADDR1], dropna=False).cumcount()
+    print(
+        f"  clave primaria {CARD1}+{ADDR1}: {float((primary > 0).mean()):.1%} de las "
+        "filas tienen historial previo en el frame"
+    )
+    if uid is None:
+        print("  clave refinada: no disponible (sin columna D1)")
+        return
+    refined_count = client["cnt_client_uid"]
+    refined_means = client.filter(regex="_prev_uid$")
+    con_historial = (refined_count > 0) | (refined_means.sum(axis=1) > 0)
+    print(
+        f"  clave refinada +D1n: {float(con_historial.mean()):.1%} de las filas tienen "
+        f"historial previo | D1 nulo en {float(uid.isna().mean()):.1%}, esas filas "
+        "degradan al nivel primario"
+    )
+    print(
+        f"  columnas C agregadas: {len(AGG_COLS)} | M1-M9 excluidas (son "
+        "categoricas en crudo)"
+    )
+
+
 def main() -> None:
     print("[1/5] Cargando datos raw ...")
     txn = load_transaction(DATA_DIR)
@@ -35,6 +74,8 @@ def main() -> None:
     features = compute_features(txn, identity)
     features = features.assign(**{KEY: txn[KEY].values})
     print(f"  features: {features.shape[1] - 1} columnas, {features.shape[0]} filas")
+    print("  cobertura de las claves de cliente (T-E02):")
+    _client_coverage(txn)
 
     print("[3/5] Verificando reproducibilidad (2 pasadas identicas) ...")
     features_2 = compute_features(txn, identity).assign(**{KEY: txn[KEY].values})

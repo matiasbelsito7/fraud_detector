@@ -59,7 +59,7 @@ Este documento no redefine principios (`constitution.md`), reglas de trabajo (`a
 
 ## Fase E — Feature engineering
 
-> Completada (2026-09-25): features en `src/features/`, documentación en `docs/features_report.md`, tests sin leakage.
+> Completada (2026-09-25): features en `src/features/`, documentación en `docs/features_report.md`, tests sin leakage. Ampliada el 2026-09-28 con T-E02 (identidad de cliente, 29 features), implementada y medida pero **no certificada como mejora**: ver T-E02 más abajo y `docs/client_features_report.md`.
 
 ### T-E01 Implementar componente de feature engineering
 - **Objetivo:** generar features fundamentadas sobre tiempo, frecuencia, historial, importes, entidades y relaciones.
@@ -71,16 +71,16 @@ Este documento no redefine principios (`constitution.md`), reglas de trabajo (`a
 ### T-E02 Agregar identidad de cliente como clave de feature engineering
 - **Objetivo:** capturar el comportamiento a nivel de cliente (tarjeta + dirección), que es donde la etiqueta está definida realmente, en lugar de tratar cada transacción como independiente.
 - **Contexto:** el objetivo de negocio de recall ≥ 0,80 no se cumplió en `test` (recall 0,7707, IC 95 % `[0,7551, 0,7864]`) y la ROC-AUC quedó en 0,9025 frente a ~0,946 del ganador de la competencia IEEE-CIS. La causa identificada es que no tenemos features de identidad de cliente: la referencia que alcanzó esa cifra usó un UID derivado de tarjeta/dirección/día de alta. Análisis completo y datos de soporte en `docs/client_features_report.md`.
-- **Descripción:** agregar la media previa de C1–C14 y M1–M9 (23 columnas) por dos claves de agrupación. **Primaria:** `card1 + addr1`. **Refinada:** `card1 + addr1 + D1n`, donde `D1n = TransactionDay - D1`. La media previa es acumulativa y se calcula vectorizada con `groupby(keys).cumsum() - x` sobre filas **previas** del grupo. Sin historial → centinela `0.0`, nunca `NaN`, siguiendo la convención de `mean_amt_card1_prev`. 47 features nuevas (20 → 67; parquet de 764 a 811 columnas).
+- **Descripción:** agregar la media previa de C1–C14 por dos claves de agrupación. **Primaria:** `card1 + addr1`. **Refinada:** `card1 + addr1 + D1n`, donde `D1n = TransactionDay - D1`. La media previa es acumulativa y se calcula vectorizada con `groupby(keys).cumsum() - x` sobre filas **previas** del grupo. Sin historial → centinela `0.0`, nunca `NaN`, siguiendo la convención de `mean_amt_card1_prev`. **29 features nuevas** (20 → 49 propias; parquet de 764 a 793 columnas). Módulo `src/features/client.py`, nombres de columnas crudas compartidos en `src/features/columns.py`.
 - **`D1n` es clave interna, no feature:** su información ya está en `D1` (la edad de la tarjeta *es* `D1`), y emitirlo reintroduciría el identificador de cliente que la referencia explícitamente rechaza.
 - **Decisiones tomadas (confirmadas por el usuario):**
   - Clave primaria `card1+addr1`, no el UID `card1+addr1+D1n` de la referencia, porque aquí el UID completo solo cubriría 34,4 % de las filas de test.
-  - Columnas C + M únicamente. V (339 columnas) explotaría la dimensionalidad sin evidencia que lo justifique.
+  - Solo columnas C. V (339 columnas) explotaría la dimensionalidad sin evidencia que lo justifique. **M1–M9 además se excluyeron al implementar** (el diseño inicial decía C+M): en crudo son categóricas, las codifica el preprocessor, M1 es `T` en el 99,99 % de sus no nulos y entre el 46 % y el 59 % de las M son nulas, luego su "media previa" no está definida ni informa. Fijado con `test_columnas_m_no_se_agregan`.
   - Solo media, sin desviación estándar, por simplicidad (`constitution.md` §7).
 - **Dependencias:** T-E01.
-- **Archivos/componentes probables:** `src/features/client.py` (nuevo), `src/features/features.py`, `run_feature_engineering.py`, `docs/features_report.md`, `docs/client_features_report.md`, tests en `tests/test_features.py`.
-- **Verificación (specs §15 — features consistentes, sin leakage):** cinco tests nuevos. El más crítico es `test_media_vectorizada_coincide_con_expanding`, que ata el atajo `cumsum` a `previous_expanding` sobre un caso pequeño, para que la optimización no pueda divergir de la definición. Los otros: `test_agregaciones_de_cliente_sin_info_futura` (extiende el patrón de `test_sin_retroactividad_ni_info_futura`), `test_cliente_sin_historial_usa_centinela`, `test_degrada_sin_columnas_c_m_d1` y extensión de `test_inferencia_fila_unica_consistente`.
-- **Estado: PENDIENTE.** Sin implementar.
+- **Archivos/componentes probables:** `src/features/client.py` (nuevo), `src/features/columns.py` (nuevo), `src/features/features.py`, `run_feature_engineering.py`, `docs/features_report.md`, `docs/client_features_report.md`, tests en `tests/test_features.py`.
+- **Verificación (specs §15 — features consistentes, sin leakage):** seis tests nuevos. El más crítico es `test_media_vectorizada_coincide_con_expanding`, que ata el atajo `cumsum` a `previous_expanding` sobre un caso pequeño, para que la optimización no pueda divergir de la definición. Los otros: `test_clave_refinada_separa_mismo_cliente`, `test_agregaciones_de_cliente_sin_info_futura`, `test_cliente_sin_historial_usa_centinela`, `test_degrada_sin_columnas_c_m_d1`, `test_columnas_m_no_se_agregan` y extensión de `test_inferencia_fila_unica_consistente`.
+- **Estado: IMPLEMENTADA Y MEDIDA. No certificada como mejora** (2026-09-28). `run_tuning.py` y `run_threshold.py` re-ejecutados; `run_evaluation.py` no. Resultado y veredicto en `docs/client_features_report.md`.
 
 #### Regla de certificación de T-E02 (crítica, no negociable)
 
@@ -95,12 +95,25 @@ Añadir features es **selección de features**, y `constitution.md` §5 exige qu
 
 Consecuencia que debe quedar escrita, no implícita: **la cifra de `test` (ROC-AUC 0,9025 / PR-AUC 0,5282 / recall 0,7707) corresponde al modelo baseline sin features de cliente.** El modelo con T-E02 se certifica únicamente con train out-of-fold y `validation`, y hay que reportarlo así en `docs/evaluation_report.md` y en el `README.md`.
 
-La comparación del nuevo set contra el baseline se hace **por fold, no solo por media**: si la mejora de las 47 features no es consistente en los 3 pliegues walk-forward, es ruido.
+La comparación del nuevo set contra el baseline se hace **por fold, no solo por media**: si la mejora de las features de cliente no es consistente en los 3 pliegues walk-forward, es ruido.
 
-#### Pendientes por decidir antes de implementar
+#### Resultado de la certificación (2026-09-28)
 
-1. **Numeración:** confirmar T-E02 dentro de la Fase E (como está) o crear una fase nueva con letra propia. Se eligió T-E02 para no romper la secuencia y dejar explícito que el consumo de test no se repite.
-2. **Hallazgo adyacente, fuera de alcance:** `card1`, `addr1`, `card2`, `card3`, `addr2`, `D1`, `P_emaildomain` y `ProductCD` están guardadas como **float**, así que LightGBM corta por umbrales numéricos sobre identificadores que no tienen orden. Nunca se trataron como categóricas. Es un cambio de una línea por columna y probablemente mueva el AUC tanto como T-E02, pero es otra decisión y queda aparte.
+| Comparación (PR-AUC OOF) | T-E02 | Fase H | Δ media | Δ por pliegue |
+|---|---:|---:|---:|---|
+| Ganadora | 0,640227 (config 11, 439 rondas) | 0,633573 (config 18, 219 rondas) | +0,006654 | **[+0,0104, +0,0110, −0,0014]** |
+| Ancla (mismos hiperparámetros) | 0,630059 | 0,631655 | −0,001596 | **[−0,0089, +0,0086, −0,0044]** |
+
+La meta (OOF > 0,633573) se cumple, pero **la mejora no es consistente en los 3 pliegues y la comparación aislada es negativa**: la diferencia entre las dos búsquedas se explica por la configuración elegida, no por las 29 features. Por la regla de este documento, **T-E02 no se certifica como mejora**. Descartada por medición la hipótesis de cobertura (claves con 94–95,7 % y 40,6–44,8 % de cobertura por pliegue, estable). Las features sí se usan (13,3 % de la ganancia; `cnt_client_uid` es la #10 del modelo), y el punto operativo de `validation` mejora (mismo recall con 11,30 % de alertas frente a 12,87 %).
+
+Evidencia completa en `docs/client_features_report.md`; segunda ejecución en `docs/tuning_report.md` §10.
+
+#### Pendiente de decisión
+
+1. **Qué modelo se despliega:** `artifacts/model_final.joblib` (T-E02, 12,5 MB) o `artifacts/model_final_fase_h.joblib` (Fase H, 3,1 MB, el único con métricas de `test`). No se puede dirimir con rigor sin un holdout limpio, y `test` ya se consumió.
+2. **Guarda técnica de `test`:** al re-ejecutarse `run_threshold.py`, `threshold.json` se regeneró con el digest vigente y **la precondición de digest de `run_evaluation.py` dejó de proteger**. Hoy el script consumiría `test` por segunda vez si alguien lo lanza. La regla de `constitution.md` §5 es ahora el único freno. Queda por decidir si se añade un candado explícito en el script (abortar si ya existe `test_metrics.json`, con override manual).
+3. **Numeración:** T-E02 queda dentro de la Fase E, como está, para no romper la secuencia y dejar explícito que el consumo de test no se repite.
+4. **Hallazgo adyacente, fuera de alcance:** `card1`, `addr1`, `card2`, `card3`, `addr2`, `D1`, `P_emaildomain` y `ProductCD` están guardadas como **float**, así que LightGBM corta por umbrales numéricos sobre identificadores que no tienen orden. Nunca se trataron como categóricas. Es un cambio de una línea por columna y probablemente mueva el AUC tanto como T-E02, pero es otra decisión y queda aparte.
 
 ## Fase F — División de datos
 

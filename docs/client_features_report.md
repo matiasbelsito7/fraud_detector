@@ -71,14 +71,14 @@ Es un cambio de una línea por columna y probablemente de impacto comparable a T
 |---|---|---|
 | Clave primaria | `card1 + addr1` | 95,1 % de cobertura en test |
 | Clave refinada | `card1 + addr1 + D1n` | Solo aporta en el 34,4 % con historial |
-| Columnas | C1–C14 + M1–M9 | Baja cardinalidad, medias interpretables |
+| Columnas | C1–C14 | M1–M9 son categóricas en crudo, no admiten "media previa" |
 | Agregación | Media previa, acumulativa | Fiel a la referencia y simple (`constitution.md` §7) |
 | `D1n` | Clave interna, no feature | Su información ya está en `D1`; emitirlo reintroduce el identificador que la referencia rechaza |
 | Sin historial | Centinela `0.0` | Nunca `NaN`: rompe `test_inferencia_fila_unica_consistente` y el check `.notna()` del pipeline |
 
 ### Fórmula vectorizada
 
-Con el frame ya ordenado por `TransactionDT`, para cada columna `col` de C/M y cada clave `keys`:
+Con el frame ya ordenado por `TransactionDT`, para cada columna `col` de C y cada clave `keys`:
 
 ```
 x        = col.fillna(0.0)
@@ -88,9 +88,9 @@ prior_n    = groupby(keys)[nonnull].cumsum() - nonnull
 prior_mean = prior_sum / prior_n   si prior_n > 0, si no 0.0
 ```
 
-`cumsum() - x` da la suma de filas **previas** del grupo sin necesidad de `shift`, y es correcto porque la acumulación por grupo respeta el orden temporal del frame. Los `NaN` de C/M se tratan como 0 en el numerador y no cuentan en el denominador, de modo que una columna ausente en una fila no destruye el agregado del grupo.
+`cumsum() - x` da la suma de filas **previas** del grupo sin necesidad de `shift`, y es correcto porque la acumulación por grupo respeta el orden temporal del frame. Los `NaN` de C se tratan como 0 en el numerador y no cuentan en el denominador, de modo que una columna ausente en una fila no destruye el agregado del grupo.
 
-El atajo importa: la definición ingenua (`groupby.transform` con `expanding().mean().shift(1)`) haría ~35.384 × 23 = 813.000 llamadas de Python por clave. Por eso `test_media_vectorizada_coincide_con_expanding` es el test crítico de esta tarea: ata la optimización a la definición para que no puedan divergir.
+El atajo importa: la definición ingenua (`groupby.transform` con `expanding().mean().shift(1)`) haría ~35.384 × 14 = 495.000 llamadas de Python por clave. Por eso `test_media_vectorizada_coincide_con_expanding` es el test crítico de esta tarea: ata la optimización a la definición para que no puedan divergir.
 
 ### Features resultantes
 
@@ -98,12 +98,12 @@ El atajo importa: la definición ingenua (`groupby.transform` con `expanding().m
 |---|---|---|
 | `cnt_client_uid` | 1 | refinada |
 | `mean_C{i}_prev_client` | 14 | primaria |
-| `mean_M{i}_prev_client` | 9 | primaria |
 | `mean_C{i}_prev_uid` | 14 | refinada |
-| `mean_M{i}_prev_uid` | 9 | refinada |
-| **Total** | **47** | |
+| **Total** | **29** | |
 
-De 20 features propias a 67. Parquet de 764 a 811 columnas.
+De 20 features propias a 49. Parquet de 764 a 793 columnas.
+
+**Desviación respecto al diseño inicial:** el diseño proyectaba 47 features (C+M en las dos claves). M1–M9 quedaron **excluidas** al implementar, por tres razones medidas: en el dataset crudo son categóricas (`T`/`F`, y M4 con tres niveles `M0`/`M1`/`M2`), de modo que su media previa no está definida sobre el frame que recibe `compute_features` —el preprocessor ya las declara categóricas y las codifica con `OrdinalEncoder`—; M1 es `T` en el 99,99 % de sus no nulos; y entre el 46 % y el 59 % de las M son nulas, luego su tasa previa sería casi constante y calculada sobre historiales muy cortos. Las C sí son recuentos numéricos de coincidencias, que es justo lo que promedia la referencia. El test `test_columnas_m_no_se_agregan` fija esta decisión.
 
 ## Regla de certificación
 
@@ -114,15 +114,96 @@ Añadir features es selección de features. `constitution.md` §5 exige que `tes
 
 La cifra de `test` — ROC-AUC 0,9025, PR-AUC 0,5282, recall 0,7707 — **corresponde al modelo baseline**. El modelo con T-E02 se certifica con train out-of-fold y `validation`, y debe reportarse así.
 
-La comparación se hace por fold, no solo por media: si las 47 features no mejoran de forma consistente en los 3 pliegues walk-forward, es ruido y T-E02 no entra.
+La comparación se hace por fold, no solo por media: si las features no mejoran de forma consistente en los 3 pliegues walk-forward, es ruido y T-E02 no entra.
 
-## Qué haría que esto no funcione
+## Resultado medido (2026-09-28)
 
-- **Sobreajuste.** 47 features sobre 434k filas con 219 rondas. Mitigado por la validación por fold, no por intuición.
-- **Cobertura de `D1`.** Las filas con `D1` nulo degradan al nivel primario. Hay que medir cuántas son y reportarlo; si son muchas, la clave refinada aporta poco.
-- **Objetivo equivocado.** Si el objetivo de negocio sigue siendo recall a umbral fijo y no AUC, mejorar el ranking puede no mover el recall operativo. Es un riesgo real y no se puede resolver sin volver a medir, lo cual exige un holdout que ya no existe.
-- **Deriva temporal.** El recall bajó 0,8161 → 0,8002 → 0,7707 entre train OOF, validation y test. Un modelo mejor puede seguir sin alcanzar 0,80 en producción.
+Ejecutado: `run_feature_engineering.py` (parquet reconstruido, 764 → 793 columnas), `run_tuning.py` (segunda búsqueda, mismas 20 configs y seed 42) y `run_threshold.py`. **`run_evaluation.py` no se ejecutó: `test` no se volvió a leer.** El modelo de Fase H quedó archivado en `artifacts/model_final_fase_h.joblib` y sus métricas de `test` en `reports/evaluation/fase_i_baseline/`.
+
+### Por fold, la regla que el propio plan se impone
+
+| Comparación | PR-AUC OOF | Pliegues | Δ media |
+|---|---|---|---|
+| Ganadora con T-E02 (config 11, 439 rondas) | 0,640227 | [0,6830, 0,5667, 0,6709] | +0,006654 |
+| Ganadora de Fase H (config 18, 219 rondas) | 0,633573 | [0,6727, 0,5557, 0,6723] | — |
+| **Δ por pliegue** | | **[+0,0104, +0,0110, −0,0014]** | |
+| Ancla con T-E02 (config 0) | 0,630059 | [0,6692, 0,5568, 0,6641] | −0,001596 |
+| Ancla de Fase H (config 0) | 0,631655 | [0,6782, 0,5482, 0,6686] | — |
+| **Δ por pliegue** | | **[−0,0089, +0,0086, −0,0044]** | |
+
+La meta del plan (OOF > 0,633573) **se cumple**, con +0,0067 de media. Pero la regla escrita en este mismo reporte dice que el cambio entra solo si mejora de forma consistente en los 3 pliegues, y **no lo hace**: el tercer pliegue se va −0,0014. El ruido entre pliegues es de ±0,05, así que la señal está dentro del ruido.
+
+La comparación que aísla las features es la del ancla, porque mantiene los hiperparámetros de la Fase G y solo cambia el set de columnas: **−0,0016 de media, con los tres signos distintos.** Atribuir el +0,0067 a las features de cliente no se sostiene; la diferencia real entre ambas búsquedas es que la seleccionó otra configuración (255 hojas y 439 rondas, frente a 219).
+
+### Confirmación en `validation`
+
+| Métrica | T-E02 | Fase H | Δ |
+|---|---|---|---|
+| ROC-AUC | 0,927395 | 0,926248 | +0,001147 |
+| PR-AUC | 0,607936 | 0,581350 | +0,026586 |
+| recall @0,5 | 0,342055 | 0,340538 | +0,001517 |
+| precision @0,5 | 0,866475 | 0,843192 | +0,023282 |
+
+Mejora visible, pero **mezcla dos cambios**: las features y la configuración ganadora. No es atribuible a T-E02 aislada.
+
+### Umbral operativo
+
+`run_threshold.py` fijó el umbral en `validation` con el objetivo de recall ≥ 0,80:
+
+| Bloque | Umbral | recall | precision | alertas |
+|---|---|---|---|---|
+| validation (calibración) | 0,008480 | 0,8002 [0,7849, 0,8154] | 0,2399 | 11,30 % |
+| train out-of-fold (corroboración) | 0,008480 | 0,7815 [0,7723, 0,7906] | 0,2544 | 12,01 % |
+| _Fase H, validation_ | _0,029329_ | _0,8002_ | _0,2107_ | _12,87 %_ |
+| _Fase H, train OOF_ | _0,029329_ | _0,8161_ | _0,2112_ | _15,12 %_ |
+
+El modelo con T-E02 alcanza el mismo recall de validación con **menos alertas y más precisión** que el de Fase H (11,30 % frente a 12,87 %; 0,2399 frente a 0,2107), y en `test` el margen fue precisamente el de las alertas. Es el indicio más favorable a T-E02, y es un indicio de **punto operativo**, no de ranking: no separa mejor los ejemplos.
+
+Cambia el signo de la deriva: con Fase H el recall caía al avanzar en el tiempo (OOF 0,8161 → validation 0,8002 → test 0,7707, deriva −0,0159), y con T-E02 la corroboración out-of-fold queda **por debajo** de la calibración (0,7815 frente a 0,8002, deriva +0,0187). No se puede comprobar si eso revierte la caída en `test` sin volver a consumir `test`.
+
+### Las features sí se usan
+
+Importancia por ganancia del modelo final (791 features, `artifacts/model_final.joblib`):
+
+| Familia | n | Ganancia total | Mejor puesto |
+|---|---|---|---|
+| Todas las de cliente | 29 | 13,28 % | #10 |
+| `mean_C{i}_prev_client` (primaria) | 14 | 7,90 % | #27 |
+| `cnt_client_uid` + `mean_C{i}_prev_uid` (refinada) | 15 | 5,38 % | #10 (`cnt_client_uid`, 2,01 %) |
+
+`cnt_client_uid` es la décima feature más usada del modelo, por encima de `card1` o `TransactionAmt`. El modelo las explotó; el problema es que no produce ranking suficiente para superar el ruido entre pliegues. La cola de la familia refinada es floja: `mean_C3_prev_uid` queda en el puesto 399 de 791 con 0,002 % de ganancia.
+
+### La cobertura de las claves no es el problema
+
+Descartada la hipótesis de "la clave refinada casi nunca aplica". Cobertura de la clave en la ventana de puntuación de cada pliegue de `train` (la fila ya tiene historial en la ventana de entrenamiento):
+
+| Pliegue | n puntuadas | `card1+addr1` | `+D1n` |
+|---|---|---|---|
+| 0 | 63.662 | 94,0 % | 41,5 % |
+| 1 | 71.089 | 94,4 % | 40,6 % |
+| 2 | 65.544 | 95,7 % | 44,8 % |
+
+La cobertura es estable y alta en los tres pliegues, incluido el tercero, que es el que no mejora. `D1` no es el cuello de botella.
+
+## Veredicto
+
+**T-E02 no se certifica como mejora**, y por la regla escrita arriba (consistencia en los 3 pliegues) no debería entrar como cambio aceptado de feature engineering. Queda implementado, testeado y medido, con un resultado negativo que es información valiosa por sí mismo: la identidad de cliente es la vía que la referencia de la competencia siguió para llegar a 0,946 y aquí no mueve el ranking.
+
+Lo que sí es defendible del cambio, con las cifras delante:
+
+- El punto operativo mejora: mismo recall de validación con 1,57 puntos menos de alertas (11,30 % frente a 12,87 %) y precisión 0,2399 frente a 0,2107. Es la única comparación que favorece a T-E02 sin estar contaminada por la configuración elegida.
+- El drift entre bloques cambia de signo, lo que sugiere —sin poder comprobarlo— un comportamiento temporal menos degradado.
+- La comparación aislada (ancla, mismos hiperparámetros) es **negativa**: −0,0016 de media y tres signos distintos. La explicación más honesta de la diferencia entre las dos búsquedas es la configuración, no las features.
+
+Pendiente de decisión: si se conserva el modelo de Fase H como desplegable o se adopta el de T-E02, y si `test` —ya consumido— llega a hacer falta para dirimirlo, porque sin un holdout limpio no hay forma de resolverlo con rigor.
+
+## Riesgos planteados y cómo quedaron
+
+- **Sobreajuste.** 29 features sobre 434k filas con 439 rondas. No se materializó: el desglose por pliegue no muestra caída en los pliegues recientes respecto a la línea base, y las features reciben 13,3 % de la ganancia.
+- **Cobertura de `D1`.** Descartada por medición: 40,6–44,8 % de las filas puntuadas de cada pliegue tienen historial de cliente exacto, estable entre pliegues. Ver la tabla de arriba.
+- **Objetivo equivocado.** Planteado como el riesgo principal y confirmado: el ranking no mejora, pero el punto operativo sí (menos alertas al mismo recall). Es exactamente el caso en que una mejora de AUC no se traduce en el objetivo de negocio, y aquí ni siquiera hay mejora de AUC.
+- **Deriva temporal.** El recall bajó 0,8161 → 0,8002 → 0,7707 entre train OOF, validation y test en Fase H. Con T-E02 la deriva out-of-fold cambia de signo, pero eso no se puede verificar sin `test`.
 
 ## Reproducción del análisis
 
-Las cifras de este reporte salen de `data/processed/split.parquet` y son reproducibles con el mismo digest `6d612a6ad9c4328088a91fc4278cd4b3d890e73fa44769df27746f0282c97e6a` de la Fase H.
+Las cifras de cobertura salen de `data/processed/split.parquet` con el digest `6d612a6ad9c4328088a91fc4278cd4b3d890e73fa44769df27746f0282c97e6a` de la Fase H. Las de modelado salen de la segunda ejecución de `run_tuning.py` y `run_threshold.py`, con el `split.parquet` reconstruido por T-E02 (digest `162c566a169f740f...`); los resultados anteriores están archivados en `reports/tuning/baseline_fase_h/` y `reports/evaluation/fase_i_baseline/`.

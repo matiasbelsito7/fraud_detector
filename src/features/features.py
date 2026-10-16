@@ -3,9 +3,10 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-KEY = "TransactionID"
-DT = "TransactionDT"
-AMT = "TransactionAmt"
+from src.features.client import client_features
+from src.features.columns import AMT, DT, KEY
+
+__all__ = ["AMT", "DT", "KEY"]
 
 _Group = str | list[str] | tuple[str, ...]
 
@@ -127,4 +128,5 @@ def compute_features(
     out["p_eq_r_email"] = eq
 
     out = pd.concat([out, device_features(ordered, identity)], axis=1)
+    out = pd.concat([out, client_features(ordered)], axis=1)
     return out.loc[df.index]

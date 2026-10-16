@@ -8,7 +8,7 @@ Fase I completada. El modelo final de la Fase H (LightGBM, configuración 18) ti
 
 **El objetivo de negocio de recall ≥ 0,80 no se cumple en `test`**: hay deriva temporal (recall 0,8161 → 0,8002 → 0,7707 en train OOF, validation y test). `test` ya no puede volver a usarse para decidir nada. Reporte: `docs/evaluation_report.md`; resultados en `reports/evaluation/`.
 
-**Próximo trabajo (T-E02, pendiente):** agregar identidad de cliente (`card1+addr1`) como clave de feature engineering, la vía que la referencia de la competencia usó para llegar a ROC-AUC 0,946 y que aquí no tenemos. Medido en nuestro split, la clave correcta es `card1+addr1` (95,1 % de cobertura) y no el UID completo de la referencia (34,4 %). Análisis y decisiones en `docs/client_features_report.md`. **Importante:** al ser selección de features, `test` no se volverá a leer para evaluar este cambio; se certifica solo con train out-of-fold y `validation`.
+> **Las cifras anteriores son del modelo sin features de identidad de cliente.** T-E02 se implementó después (2026-09-28) y **no se evaluó sobre `test`**: al ser selección de features, `constitution.md` §5 exige que `test` no participe de ella. Su modelo se certificó solo con `train` out-of-fold y `validation`, con resultado **negativo**: la comparación aislada da −0,0016 de PR-AUC medio con los tres pliegues de distinto signo, dentro del ruido de ±0,05. El único punto a favor es el operativo (mismo recall con 11,30 % de alertas frente a 12,87 %). Está pendiente decidir cuál de los dos modelos es el desplegable. Análisis completo en `docs/client_features_report.md`.
 
 ## Documentación
 
@@ -23,7 +23,7 @@ Fase I completada. El modelo final de la Fase H (LightGBM, configuración 18) ti
 - `docs/modeling_report.md` — escalera de modelos, comparación y reproducibilidad del entrenamiento.
 - `docs/tuning_report.md` — protocolo de búsqueda, selección del modelo final y riesgos abiertos.
 - `docs/evaluation_report.md` — fijación del umbral, resultado en `test` y conclusión sobre el objetivo de recall.
-- `docs/client_features_report.md` — análisis de identidad de cliente y plan T-E02 (pendiente).
+- `docs/client_features_report.md` — identidad de cliente (T-E02): análisis, implementación, medición y veredicto negativo.
 
 ## Pipeline de ejecución
 
@@ -41,7 +41,7 @@ uv run run_threshold.py
 uv run run_evaluation.py
 ```
 
-`run_threshold.py` fija el umbral y **no carga `test`**. `run_evaluation.py` es el único script que lo lee, y aborta si el umbral aún no está registrado o si el digest de los datos cambió.
+`run_threshold.py` fija el umbral y **no carga `test`**. `run_evaluation.py` es el único script que lo lee, y aborta si el umbral no está registrado, si la config no coincide o si el digest de los datos cambió respecto al registrado en `threshold.json`. Ya se ejecutó una vez (Fase I) y **no debe volver a ejecutarse**. Ojo: esa última comprobación **ya no protege**, porque `run_threshold.py` se re-ejecutó para T-E02 y regeneró `threshold.json` con el digest vigente; hoy todas las precondiciones pasarían. La protección real es la regla de `constitution.md` §5 y de `tasks.md`, y el registro de que `test` ya se consumió (`reports/evaluation/fase_i_baseline/test_metrics.json`).
 
 ## Estructura inicial
 

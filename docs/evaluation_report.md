@@ -1,17 +1,19 @@
 # Reporte de evaluacion final (Fase I)
 
+> **Alcance de estas cifras.** Todo lo que hay en este reporte corresponde al modelo de la **Fase H, sin features de identidad de cliente** (762 features, configuración 18, 219 rondas). La Fase I se ejecutó una sola vez y `test` **no se ha vuelto a leer** desde entonces. Con posterioridad (2026-09-28) se implementó T-E02 y se re-ejecutaron `run_tuning.py` y `run_threshold.py`; ese modelo **no tiene métricas sobre `test`** porque añadir features es selección de features y `constitution.md` §5 exige que `test` no participe de ella. Las cifras del modelo con T-E02, todas de `train` out-of-fold y `validation`, están en `docs/client_features_report.md`. Lo que se conserva aquí como estimación de desempeño en producción es la cifra del modelo sin features de cliente.
+
 ## Que se midio y con que reglas
 
 La evaluacion final se ejecuta en `run_evaluation.py`, unico punto del pipeline
 que lee `test`. Antes de tocarlo se verifican tres precondiciones:
 
 1. existe `reports/evaluation/threshold.json`, escrito por `run_threshold.py`;
-2. el digest de `split.parquet` sigue siendo `6d612a6a...` (el de la Fase H);
+2. el digest de `split.parquet` sigue coincidiendo con el registrado en `threshold.json` (en la ejecución de la Fase I, `6d612a6a…`);
 3. la config del umbral coincide con la config seleccionada en `run_tuning.py`.
 
 Si cualquiera falla, el script aborta sin puntuar nada. Todas las metricas se
 calculan con el umbral ya registrado: no se busca ningun parametro ni ningun
-umbral aqui.
+umbral aqui. La precondicion 2 era entonces una barrera real (cualquier cambio de datos la hacia fallar); hoy ya no lo es, por el motivo que se explica al final de este reporte.
 
 ## Como se fijo el umbral (y por que no en train)
 
@@ -97,6 +99,12 @@ recall del 80 % es un requisito duro, las vias son de negocio, no de ajuste:
 2. abrir una fase de re-entrenamiento con datos mas recientes, features que
    capturen el drift y revision del criterio de coste.
 
+### Consecuencia de T-E02 (2026-09-28)
+
+T-E02 se implemento **despues** de esta evaluacion, precisamente porque este reporte es el que motivo el trabajo. Sus 29 features de identidad de cliente se certificaron solo con `train` out-of-fold y `validation`, y el veredicto fue negativo: la comparacion aislada (mismos hiperparametros, solo cambia el set de columnas) da **-0,0016 de PR-AUC medio, con los tres pliegues de distinto signo**, dentro del ruido de +-0,05. El modelo de T-E02 si mejora el punto operativo de `validation` (mismo recall con 11,30 % de alertas frente a 12,87 %), pero eso no se puede trasladar a `test` sin volver a consumirlo, y no se hara.
+
+Queda por decidir cual de los dos modelos es el desplegable: `artifacts/model_final.joblib` (T-E02, 12,5 MB) o `artifacts/model_final_fase_h.joblib` (Fase H, 3,1 MB, el que tiene las cifras de `test`). El razonamiento y las opciones estan en `docs/client_features_report.md`. Archivos de la Fase I preservados en `reports/evaluation/fase_i_baseline/`.
+
 ## Reproduccion
 
 ```bash
@@ -104,3 +112,5 @@ uv run run_tuning.py      # Fase H: selecciona config y fija rondas
 uv run run_threshold.py   # fija el umbral; NO carga test
 uv run run_evaluation.py  # unico consumo de test
 ```
+
+Esas tres ordenes son las de la Fase I. `run_evaluation.py` no debe volver a ejecutarse, y **su proteccion tecnica se perdio con T-E02**: la comprobacion de digest compara `split.parquet` contra el registrado en `threshold.json`, y `run_threshold.py` se re-ejecuto para T-E02 y regenero ese archivo con el digest vigente (`162c566a...`). Hoy las tres precondiciones pasan y el script consumiria `test` por segunda vez si alguien lo lanza. El unico freno que queda es la regla de `constitution.md` 5 y de `tasks.md` T-E02, mas el registro de que `test` ya se consumio (`reports/evaluation/fase_i_baseline/test_metrics.json`).
