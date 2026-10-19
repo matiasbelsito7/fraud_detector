@@ -20,7 +20,7 @@ Fase O completada (2026-10-19): revisión de los 9 criterios de `specs.md §15`,
 
 Fase M completada (2026-10-19): API FastAPI en `src/api/` y `run_api.py`, con `GET /health` y `POST /predict` (transacción con historial e identidad opcionales, umbral configurable), carga del modelo al iniciar y validación de digests. 9 tests HTTP y smoke real con T-E02. Reporte: `docs/api_report.md`; ejecución: `uv run run_api.py`.
 
-Fase N completada (2026-10-19): `Dockerfile` + `docker-compose.yml` (artefactos montados read-only, healthcheck, usuario no root), CI en GitHub Actions (calidad + build de imagen) y monitoring Prometheus en `GET /metrics`. El build local no pudo completarse por falta de espacio en disco del host; el job `docker` de CI lo valida en Linux. Reporte: `docs/operations_report.md`.
+Fase N completada (2026-10-19): `Dockerfile` + `docker-compose.yml` (artefactos montados read-only, healthcheck, usuario no root), CI en GitHub Actions (calidad + build de imagen) y monitoring Prometheus en `GET /metrics`. El build local no pudo completarse por falta de espacio en disco del host; el job `docker` de CI lo valido en Linux (run `39338449866`). Reporte: `docs/operations_report.md`.
 
 ## Documentación
 

@@ -31,7 +31,7 @@ El objetivo de negocio de recall >= 0,80 **no se cumple en `test`** (0,7707) y q
 - `uv run pre-commit run --all-files`: ruff, ruff-format, black y mypy en verde.
 - `uv run run_inference.py`: probabilidad 0,000324, diferencia 0,00e+00 frente al lote, `test` no cargado.
 - Smoke de API con T-E02: `GET /health` y `POST /predict` responden `200`; `/metrics` esta cubierto por los tests HTTP con el pipeline de juguete.
-- Docker y CI: `docker compose config` valido y job `CI` definido; el build local de la imagen no se pudo completar por espacio en disco (284 MB libres).
+- Docker y CI: `docker compose config` valido; run `39338449866` con jobs `quality` (130 tests) y `docker` (build de imagen) en verde. El build local no se pudo completar por espacio en disco (284 MB libres).
 
 `run_evaluation.py` **no se ejecuto** en esta fase.
 

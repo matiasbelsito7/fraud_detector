@@ -207,14 +207,14 @@ Evidencia completa en `docs/client_features_report.md`; segunda ejecución en `d
 
 ### Fase N — Docker, tests, CI/CD, monitoring
 
-> Completada (2026-10-19): `Dockerfile` + `docker-compose.yml`, CI en GitHub Actions, 130 tests y `/metrics` Prometheus; documentación en `docs/operations_report.md`. El smoke local del contenedor quedó pendiente por falta de espacio en disco; el job `docker` de CI valida el build en Linux.
+> Completada (2026-10-19): `Dockerfile` + `docker-compose.yml`, CI en GitHub Actions, 130 tests y `/metrics` Prometheus; documentación en `docs/operations_report.md`. El smoke local del contenedor quedó pendiente por falta de espacio en disco; CI valido el build en Linux (run `39338449866`: `quality` y `docker` en verde).
 
 - **T-N01 Docker:** contenerizar el servicio y componentes cuando aplique.
   - **Resultado:** imagen `python:3.14-slim` con `uv`, `libgomp1` para LightGBM, usuario no root, healthcheck y `run_api.py`; compose monta `artifacts/` read-only. Los artefactos no se hornean.
 - **T-N02 Tests automatizados:** cobertura de los pipelines y componentes principales.
   - **Resultado:** 130 tests, incluidos 9 de API y el pipeline de juguete reutilizable en `tests/conftest.py`.
 - **T-N03 CI/CD:** integración y despliegue automatizado.
-  - **Resultado:** workflow `CI` con jobs `quality` (ruff, black, mypy, pytest con `uv sync --locked`) y `docker` (build sin push). No hay despliegue automático: no existe target, registry ni credenciales.
+  - **Resultado:** workflow `CI` con jobs `quality` (ruff, black, mypy, pytest con `uv sync --locked`) y `docker` (build sin push); ambos en verde en el run `39338449866`. No hay despliegue automático: no existe target, registry ni credenciales.
 - **T-N04 Monitoring:** seguimiento del comportamiento en producción.
   - **Resultado:** `/health` y `/metrics` con counters de requests, histograma de latencia y predicciones por etiqueta. Sin drift ni metricas de negocio (requieren ground truth diferido).
 - Incorporar cada componente solo cuando las etapas anteriores estén estables (`specs §13`).

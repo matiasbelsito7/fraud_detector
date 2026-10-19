@@ -27,7 +27,7 @@ docker compose up --build
 
 El healthcheck consulta `GET /health` cada 30 s. La imagen expone `/docs`, `/health`, `/predict` y `/metrics`.
 
-**Verificacion local:** el primer build completo y el contenedor arrancaron, pero fallaron al cargar LightGBM por falta de `libgomp1`; se agrego la dependencia al `Dockerfile`. El segundo build recompilo todas las capas y llego hasta la exportacion, donde Docker Desktop se detuvo porque el host tenia **284 MB libres**. El smoke final del contenedor no se pudo repetir en este host. La construccion queda cubierta por el job `docker` de CI en cada push/PR.
+**Verificacion local:** el primer build completo y el contenedor arrancaron, pero fallaron al cargar LightGBM por falta de `libgomp1`; se agrego la dependencia al `Dockerfile`. El segundo build recompilo todas las capas y llego hasta la exportacion, donde Docker Desktop se detuvo porque el host tenia **284 MB libres**. El smoke final del contenedor no se pudo repetir en este host. La construccion quedo validada en CI: run `39338449866`, job `docker` en 3m57s sobre `ubuntu-latest`.
 
 ## 2. Tests automatizados
 
@@ -42,7 +42,7 @@ El healthcheck consulta `GET /health` cada 30 s. La imagen expone `/docs`, `/hea
 1. **quality**: `uv sync --locked`; ruff, black, mypy y `pytest`.
 2. **docker**: build de la imagen con BuildKit y cache de GitHub Actions; no publica.
 
-No hay despliegue automatico: no existe target, registry ni credenciales declaradas. Publicar la imagen o desplegar queda como decision de infraestructura. El job `docker` valida que el `Dockerfile` construye en Linux, que es la verificacion que no pudo completarse localmente por espacio en disco.
+No hay despliegue automatico: no existe target, registry ni credenciales declaradas. Publicar la imagen o desplegar queda como decision de infraestructura. El job `docker` valido que el `Dockerfile` construye en Linux (run `39338449866`, commit `5cfeb43`), que es la verificacion que no pudo completarse localmente por espacio en disco.
 
 ## 4. Monitoring
 
