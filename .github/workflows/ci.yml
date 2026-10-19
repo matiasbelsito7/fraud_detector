@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.5"
+          python-version: "3.14"
+          enable-cache: true
+      - name: Instalar dependencias
+        run: uv sync --locked
+      - name: Ruff
+        run: uv run ruff check src tests run_data_validation.py run_eda.py run_evaluation.py run_explainability.py run_feature_engineering.py run_inference.py run_preprocessing.py run_split.py run_threshold.py run_tracking.py run_training.py run_tuning.py run_api.py
+      - name: Black
+        run: uv run black --check src tests run_data_validation.py run_eda.py run_evaluation.py run_explainability.py run_feature_engineering.py run_inference.py run_preprocessing.py run_split.py run_threshold.py run_tracking.py run_training.py run_tuning.py run_api.py
+      - name: Mypy
+        run: uv run mypy src tests run_data_validation.py run_eda.py run_evaluation.py run_explainability.py run_feature_engineering.py run_inference.py run_preprocessing.py run_split.py run_threshold.py run_tracking.py run_training.py run_tuning.py run_api.py
+      - name: Tests
+        run: uv run pytest -q
+
+  docker:
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build de la imagen
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: fraud-detector-api:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

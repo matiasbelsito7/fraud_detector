@@ -200,16 +200,23 @@ Evidencia completa en `docs/client_features_report.md`; segunda ejecución en `d
 
 ### Fase M — API
 
-> Completada (2026-10-19): API FastAPI en `src/api/` y `run_api.py`, 8 tests HTTP y smoke real con T-E02; documentación en `docs/api_report.md`. No carga `test`.
+> Completada (2026-10-19): API FastAPI en `src/api/` y `run_api.py`, 9 tests HTTP y smoke real con T-E02; documentación en `docs/api_report.md`. No carga `test`.
 
 - **T-M01 Exponer la inferencia como API (p. ej. FastAPI):** recibir datos de una transacción, ejecutar pipeline y modelo, devolver resultado y probabilidad (`specs §12`).
   - **Resultado:** `POST /predict` acepta transacción + historial/identidad opcionales y umbral configurable; `GET /health` informa variante, config y umbral. El modelo se carga una vez al arrancar y se validan los digests. Errores de pipeline (historial futuro, identity sin ID) devuelven `400`; validación de body devuelve `422`. Sin autenticación, historial inline y un modelo por proceso, documentado como límite.
 
-### Fase N — Docker, tests, CI/CD, monitoring (diferida)
+### Fase N — Docker, tests, CI/CD, monitoring
+
+> Completada (2026-10-19): `Dockerfile` + `docker-compose.yml`, CI en GitHub Actions, 130 tests y `/metrics` Prometheus; documentación en `docs/operations_report.md`. El smoke local del contenedor quedó pendiente por falta de espacio en disco; el job `docker` de CI valida el build en Linux.
+
 - **T-N01 Docker:** contenerizar el servicio y componentes cuando aplique.
+  - **Resultado:** imagen `python:3.14-slim` con `uv`, `libgomp1` para LightGBM, usuario no root, healthcheck y `run_api.py`; compose monta `artifacts/` read-only. Los artefactos no se hornean.
 - **T-N02 Tests automatizados:** cobertura de los pipelines y componentes principales.
+  - **Resultado:** 130 tests, incluidos 9 de API y el pipeline de juguete reutilizable en `tests/conftest.py`.
 - **T-N03 CI/CD:** integración y despliegue automatizado.
+  - **Resultado:** workflow `CI` con jobs `quality` (ruff, black, mypy, pytest con `uv sync --locked`) y `docker` (build sin push). No hay despliegue automático: no existe target, registry ni credenciales.
 - **T-N04 Monitoring:** seguimiento del comportamiento en producción.
+  - **Resultado:** `/health` y `/metrics` con counters de requests, histograma de latencia y predicciones por etiqueta. Sin drift ni metricas de negocio (requieren ground truth diferido).
 - Incorporar cada componente solo cuando las etapas anteriores estén estables (`specs §13`).
 
 ## Fase O — Documentación y revisión final
@@ -222,4 +229,4 @@ Evidencia completa en `docs/client_features_report.md`; segunda ejecución en `d
 - **Dependencias:** todas las fases obligatorias.
 - **Archivos/componentes probables:** actualización de README/docs, checklist de aceptación.
 - **Verificación:** todos los criterios de `specs §15` se cumplen o quedan documentados los pendientes y riesgos conocidos.
-- **Resultado:** los 9 criterios se cumplen con evidencia verificable. Se corrigió una etiqueta de cobertura en `docs/eda_report.md` (DeviceType 23,84 %; join con identity 24,42 %). Riesgos abiertos documentados: recall 0,7707 en `test`, T-E02 desplegado sin métrica de `test`, historial externo en producción, artefactos no versionados y fase N diferida (M se completó después).
+- **Resultado:** los 9 criterios se cumplen con evidencia verificable. Se corrigió una etiqueta de cobertura en `docs/eda_report.md` (DeviceType 23,84 %; join con identity 24,42 %). Riesgos abiertos documentados: recall 0,7707 en `test`, T-E02 desplegado sin métrica de `test`, historial externo en producción, artefactos no versionados y fase N diferida (M y N se completaron después).

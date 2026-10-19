@@ -18,7 +18,9 @@ Fase L completada (2026-10-19): pipeline de inferencia en `src/inference/pipelin
 
 Fase O completada (2026-10-19): revisión de los 9 criterios de `specs.md §15`, todos cumplidos con evidencia verificable. El alcance inicial (fases A–L) queda cerrado. Checklist completo y riesgos abiertos en `docs/acceptance_report.md`.
 
-Fase M completada (2026-10-19): API FastAPI en `src/api/` y `run_api.py`, con `GET /health` y `POST /predict` (transacción con historial e identidad opcionales, umbral configurable), carga del modelo al iniciar y validación de digests. 8 tests HTTP y smoke real con T-E02. La Fase N (Docker/CI/monitoring) sigue diferida. Reporte: `docs/api_report.md`; ejecución: `uv run run_api.py`.
+Fase M completada (2026-10-19): API FastAPI en `src/api/` y `run_api.py`, con `GET /health` y `POST /predict` (transacción con historial e identidad opcionales, umbral configurable), carga del modelo al iniciar y validación de digests. 9 tests HTTP y smoke real con T-E02. Reporte: `docs/api_report.md`; ejecución: `uv run run_api.py`.
+
+Fase N completada (2026-10-19): `Dockerfile` + `docker-compose.yml` (artefactos montados read-only, healthcheck, usuario no root), CI en GitHub Actions (calidad + build de imagen) y monitoring Prometheus en `GET /metrics`. El build local no pudo completarse por falta de espacio en disco del host; el job `docker` de CI lo valida en Linux. Reporte: `docs/operations_report.md`.
 
 ## Documentación
 
@@ -39,6 +41,7 @@ Fase M completada (2026-10-19): API FastAPI en `src/api/` y `run_api.py`, con `G
 - `docs/inference_report.md` — pipeline de inferencia: contrato de entrada, transformaciones, configuración desplegable, verificación y límites (Fase L).
 - `docs/acceptance_report.md` — checklist de los criterios de `specs.md §15`, verificaciones ejecutadas y riesgos abiertos (Fase O).
 - `docs/api_report.md` — API FastAPI: contrato, carga del modelo, errores, ejecución y límites (Fase M).
+- `docs/operations_report.md` — Docker, CI/CD, tests automatizados y monitoring Prometheus (Fase N).
 
 ## Pipeline de ejecución
 
@@ -67,7 +70,7 @@ uv run run_inference.py
 
 `run_inference.py` demuestra el pipeline completo con una fila de `validation` y su historial previo; **no carga `test`**. Usa `config/deployment.json` y exige que los artefactos coincidan con sus sha256. Para servir una transacción nueva, usar `InferencePipeline.load(...).predict(...)` con el historial del cliente.
 
-La API se levanta aparte de la cadena batch: `uv run run_api.py` (por defecto `127.0.0.1:8000`). Expone `GET /health` y `POST /predict`, y documenta el contrato en `docs/api_report.md`. No carga `test`.
+La API se levanta aparte de la cadena batch: `uv run run_api.py` (por defecto `127.0.0.1:8000`). Expone `GET /health`, `POST /predict` y `GET /metrics` (Prometheus), y documenta el contrato en `docs/api_report.md`. No carga `test`. También puede ejecutarse en Docker: `docker compose up --build` (requiere `artifacts/`).
 
 ## Estructura inicial
 
@@ -90,4 +93,5 @@ Estructura provisional; puede ajustarse según las decisiones tomadas en fases s
 - Entorno virtual: `.venv/` (no versionado). Sincronizar con `uv sync`.
 - Experiment tracking con **MLflow** (Fase K); el store vive en `mlruns/` (no versionado).
 - API con **FastAPI** y **Uvicorn** (Fase M); tests HTTP con `httpx`.
+- CI en **GitHub Actions** y contenedor **Docker** (Fase N); metricas con `prometheus-client`.
 - Ejecutar scripts y herramientas con `uv run ...` (p. ej. `uv run run_eda.py`).

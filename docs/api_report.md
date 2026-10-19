@@ -9,6 +9,7 @@ Expone el pipeline de la Fase L por HTTP:
 | Metodo | Ruta | Descripcion |
 |---|---|---|
 | `GET` | `/health` | Variante, `config_id` y umbral del modelo cargado. |
+| `GET` | `/metrics` | Metricas Prometheus (requests, latencia y predicciones por etiqueta). |
 | `POST` | `/predict` | Puntua una transaccion con historial e identidad opcionales. |
 | `GET` | `/docs` | Swagger UI autogenerado. |
 | `GET` | `/openapi.json` | Esquema OpenAPI. |
@@ -92,7 +93,7 @@ El arranque aborta si faltan los artefactos o si los digests no coinciden.
 
 ## 6. Verificacion
 
-- `uv run pytest tests/test_api.py`: 8 tests con el pipeline de juguete de `tests/conftest.py` (health, request/response, historial, historial futuro, columnas requeridas, umbral, identity sin ID).
+- `uv run pytest tests/test_api.py`: 9 tests con el pipeline de juguete de `tests/conftest.py` (health, request/response, historial, historial futuro, columnas requeridas, umbral, identity sin ID y metricas).
 - Smoke real con `create_app()` y T-E02:
   - `GET /health` -> `200`, `variant=te02`, `config_id=11`, umbral `0,008480`;
   - `POST /predict` con una transaccion sin historial -> `200`, probabilidad `0,005315`, `label=legitima`, `n_history=0`.

@@ -41,6 +41,18 @@ def test_health(client: TestClient) -> None:
     }
 
 
+def test_metrics(client: TestClient) -> None:
+    prediction = client.post("/predict", json={"transaction": _minimal_transaction()})
+    assert prediction.status_code == 200
+
+    response = client.get("/metrics")
+    assert response.status_code == 200
+    text = response.text
+    assert "fraud_api_requests_total" in text
+    assert "fraud_api_request_duration_seconds" in text
+    assert "fraud_api_predictions_total" in text
+
+
 def test_predict_con_historial(client: TestClient, toy: dict[str, Any]) -> None:
     raw: pd.DataFrame = toy["raw"]
     payload = {
