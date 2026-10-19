@@ -196,10 +196,14 @@ Evidencia completa en `docs/client_features_report.md`; segunda ejecución en `d
 - **Verificación (specs §15 — pipeline completo, inferencia consistente):** una transacción atraviesa el pipeline de punta a punta y la inferencia utiliza el mismo procesamiento que el entrenamiento.
 - **Resultado:** `InferencePipeline` valida sha256 de modelo y preprocessor, reconstruye el esquema desde `feature_names_in_`, concatena historial + transacción, rechaza historial futuro, ejecuta preprocessing y feature engineering, verifica el orden exacto de las 791 features y aplica el umbral. El historial es opcional con degradación documentada (centinelas, sin error). La demostración real usa T-E02 y compara contra `split.parquet` sin diferencias.
 
-## Fases diferidas
+## Fases M–O
 
-### Fase M — API (diferida)
+### Fase M — API
+
+> Completada (2026-10-19): API FastAPI en `src/api/` y `run_api.py`, 8 tests HTTP y smoke real con T-E02; documentación en `docs/api_report.md`. No carga `test`.
+
 - **T-M01 Exponer la inferencia como API (p. ej. FastAPI):** recibir datos de una transacción, ejecutar pipeline y modelo, devolver resultado y probabilidad (`specs §12`).
+  - **Resultado:** `POST /predict` acepta transacción + historial/identidad opcionales y umbral configurable; `GET /health` informa variante, config y umbral. El modelo se carga una vez al arrancar y se validan los digests. Errores de pipeline (historial futuro, identity sin ID) devuelven `400`; validación de body devuelve `422`. Sin autenticación, historial inline y un modelo por proceso, documentado como límite.
 
 ### Fase N — Docker, tests, CI/CD, monitoring (diferida)
 - **T-N01 Docker:** contenerizar el servicio y componentes cuando aplique.
@@ -210,7 +214,7 @@ Evidencia completa en `docs/client_features_report.md`; segunda ejecución en `d
 
 ## Fase O — Documentación y revisión final
 
-> Completada (2026-10-19): revisión de los 9 criterios de `specs.md §15` con evidencia en `docs/acceptance_report.md`; README y `tasks.md` actualizados. 121 tests y pre-commit en verde. Sin cambios de modelo ni nueva lectura de `test`.
+> Completada (2026-10-19): revisión de los 9 criterios de `specs.md §15` con evidencia en `docs/acceptance_report.md`; README y `tasks.md` actualizados. Tests y pre-commit en verde. Sin cambios de modelo ni nueva lectura de `test`.
 
 ### T-O01 Revisión cruzada contra criterios de aceptación
 - **Objetivo:** confirmar que el proyecto cumple `specs §15`.
@@ -218,4 +222,4 @@ Evidencia completa en `docs/client_features_report.md`; segunda ejecución en `d
 - **Dependencias:** todas las fases obligatorias.
 - **Archivos/componentes probables:** actualización de README/docs, checklist de aceptación.
 - **Verificación:** todos los criterios de `specs §15` se cumplen o quedan documentados los pendientes y riesgos conocidos.
-- **Resultado:** los 9 criterios se cumplen con evidencia verificable. Se corrigió una etiqueta de cobertura en `docs/eda_report.md` (DeviceType 23,84 %; join con identity 24,42 %). Riesgos abiertos documentados: recall 0,7707 en `test`, T-E02 desplegado sin métrica de `test`, historial externo en producción, artefactos no versionados y fases M/N diferidas.
+- **Resultado:** los 9 criterios se cumplen con evidencia verificable. Se corrigió una etiqueta de cobertura en `docs/eda_report.md` (DeviceType 23,84 %; join con identity 24,42 %). Riesgos abiertos documentados: recall 0,7707 en `test`, T-E02 desplegado sin métrica de `test`, historial externo en producción, artefactos no versionados y fase N diferida (M se completó después).

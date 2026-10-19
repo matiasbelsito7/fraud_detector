@@ -1,6 +1,6 @@
 # Revision de aceptacion (Fase O)
 
-Fecha: 2026-10-19. Alcance: fases obligatorias A-L contra `specs.md §15`. Las fases M (API) y N (Docker, CI/CD, monitoring) estan diferidas por `specs.md §12-13` y no bloquean esta revision.
+Fecha: 2026-10-19. Alcance: fases obligatorias A-L contra `specs.md §15`; la Fase M (API) se completo despues y la Fase N (Docker, CI/CD, monitoring) sigue diferida por `specs.md §13`. Ninguna de las dos bloquea esta revision.
 
 ## 1. Veredicto
 
@@ -27,9 +27,10 @@ El objetivo de negocio de recall >= 0,80 **no se cumple en `test`** (0,7707) y q
 - `uv run ruff check` sobre `src`, `tests` y los 12 `run_*.py`: OK.
 - `uv run black --check`: 51 archivos sin cambios.
 - `uv run mypy` sobre `src` y los 12 scripts: 39 archivos, sin errores.
-- `uv run pytest`: **121 tests passed**.
+- `uv run pytest`: **129 tests passed**.
 - `uv run pre-commit run --all-files`: ruff, ruff-format, black y mypy en verde.
 - `uv run run_inference.py`: probabilidad 0,000324, diferencia 0,00e+00 frente al lote, `test` no cargado.
+- Smoke de API: `GET /health` y `POST /predict` con T-E02 responden `200`; 8 tests en `tests/test_api.py`.
 
 `run_evaluation.py` **no se ejecuto** en esta fase.
 
@@ -46,7 +47,7 @@ El objetivo de negocio de recall >= 0,80 **no se cumple en `test`** (0,7707) y q
 3. **`test` consumido:** `config/test_consumed.json` bloquea una segunda lectura. Cualquier reevaluacion exigiria `--force` y quedaria trazada; no debe hacerse para elegir modelos.
 4. **Historial en produccion:** la inferencia es sin estado; el entorno debe aportar el historial previo del cliente. Sin historial la prediccion funciona pero degrada. Ademas, `compute_features` recalcula agregados sobre todo el historial, lo que puede requerir agregados incrementales a alto volumen.
 5. **Artefactos no versionados:** `data/`, `artifacts/*.joblib`, `reports/` y `mlruns/` estan gitignored. Reproducir exige los CSV raw y ejecutar la cadena de scripts.
-6. **Fases diferidas:** API (M) y Docker/CI/CD/monitoring (N) quedan fuera del alcance inicial, segun `specs.md §12-13`.
+6. **Fases diferidas:** la API (M) se completo en `docs/api_report.md`; Docker/CI/CD/monitoring (N) queda fuera del alcance inicial, segun `specs.md §13`.
 7. **Mejora adyacente no abordada:** `card1`, `addr1`, `card2`, `card3`, `addr2`, `D1`, `P_emaildomain` y `ProductCD` se tratan como numericas y no como categoricas; esta identificado en `tasks.md` y no forma parte de esta revision.
 
 ## 6. Reproduccion
@@ -64,6 +65,12 @@ uv run run_threshold.py
 uv run run_explainability.py
 uv run run_tracking.py
 uv run run_inference.py
+```
+
+API en una terminal aparte:
+
+```text
+uv run run_api.py
 ```
 
 `run_evaluation.py` se omite a proposito: ya consumio `test` una vez y el candado impide repetirlo. Requiere `train_transaction.csv` y `train_identity.csv` en `data/raw/`.

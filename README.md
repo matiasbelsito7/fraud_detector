@@ -16,7 +16,9 @@ Fase K completada (2026-10-19): los experimentos de las Fases G–J quedaron reg
 
 Fase L completada (2026-10-19): pipeline de inferencia en `src/inference/pipeline.py` y configuración desplegable en `config/deployment.json` (T-E02, umbral `0,008480`, digests de artefactos). Recibe una transacción con historial opcional, aplica el mismo preprocessing y feature engineering, verifica el orden de las 791 features y devuelve probabilidad y clase. La prueba real con 434.176 filas de historial dio probabilidad idéntica al pipeline por lotes (diferencia 0,00e+00), sin cargar `test`. Reporte: `docs/inference_report.md`; demostración: `uv run run_inference.py`.
 
-Fase O completada (2026-10-19): revisión de los 9 criterios de `specs.md §15`, todos cumplidos con evidencia verificable. El alcance inicial (fases A–L) queda cerrado; las fases M (API) y N (Docker/CI/monitoring) siguen diferidas. Checklist completo y riesgos abiertos en `docs/acceptance_report.md`.
+Fase O completada (2026-10-19): revisión de los 9 criterios de `specs.md §15`, todos cumplidos con evidencia verificable. El alcance inicial (fases A–L) queda cerrado. Checklist completo y riesgos abiertos en `docs/acceptance_report.md`.
+
+Fase M completada (2026-10-19): API FastAPI en `src/api/` y `run_api.py`, con `GET /health` y `POST /predict` (transacción con historial e identidad opcionales, umbral configurable), carga del modelo al iniciar y validación de digests. 8 tests HTTP y smoke real con T-E02. La Fase N (Docker/CI/monitoring) sigue diferida. Reporte: `docs/api_report.md`; ejecución: `uv run run_api.py`.
 
 ## Documentación
 
@@ -36,6 +38,7 @@ Fase O completada (2026-10-19): revisión de los 9 criterios de `specs.md §15`,
 - `docs/tracking_report.md` — registro de experimentos G–J en MLflow: store, inventario de runs, trazabilidad y límites (Fase K).
 - `docs/inference_report.md` — pipeline de inferencia: contrato de entrada, transformaciones, configuración desplegable, verificación y límites (Fase L).
 - `docs/acceptance_report.md` — checklist de los criterios de `specs.md §15`, verificaciones ejecutadas y riesgos abiertos (Fase O).
+- `docs/api_report.md` — API FastAPI: contrato, carga del modelo, errores, ejecución y límites (Fase M).
 
 ## Pipeline de ejecución
 
@@ -64,6 +67,8 @@ uv run run_inference.py
 
 `run_inference.py` demuestra el pipeline completo con una fila de `validation` y su historial previo; **no carga `test`**. Usa `config/deployment.json` y exige que los artefactos coincidan con sus sha256. Para servir una transacción nueva, usar `InferencePipeline.load(...).predict(...)` con el historial del cliente.
 
+La API se levanta aparte de la cadena batch: `uv run run_api.py` (por defecto `127.0.0.1:8000`). Expone `GET /health` y `POST /predict`, y documenta el contrato en `docs/api_report.md`. No carga `test`.
+
 ## Estructura inicial
 
 ```
@@ -72,7 +77,7 @@ data/       Datos raw y derivados (no versionados)
 notebooks/  Análisis exploratorio (EDA)
 reports/    Resultados de las fases (no versionados)
 src/        Código del proyecto (paquete Python)
-config/     Configuración (a definir en fases posteriores)
+config/     Configuración desplegable (deployment.json, candado de test)
 tests/      Tests automatizados
 ```
 
@@ -84,4 +89,5 @@ Estructura provisional; puede ajustarse según las decisiones tomadas en fases s
 - Dependencias declaradas en `pyproject.toml` (grupo de desarrollo en `[dependency-groups]`); versiones bloqueadas en `uv.lock`.
 - Entorno virtual: `.venv/` (no versionado). Sincronizar con `uv sync`.
 - Experiment tracking con **MLflow** (Fase K); el store vive en `mlruns/` (no versionado).
+- API con **FastAPI** y **Uvicorn** (Fase M); tests HTTP con `httpx`.
 - Ejecutar scripts y herramientas con `uv run ...` (p. ej. `uv run run_eda.py`).
