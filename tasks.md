@@ -34,6 +34,7 @@ Este documento no redefine principios (`constitution.md`), reglas de trabajo (`a
 - **Dependencias:** T-A02.
 - **Archivos/componentes probables:** carpeta de datos, script de carga/inspección, reporte de validación.
 - **Verificación (specs §15 — datos validables):** ambos archivos se leen correctamente, el join por `TransactionID` es consistente y la calidad (tipos, missings, distribución de target) queda documentada.
+- **Resultado:** `reports/validation_report.json` (gitignored): 590.540 x 394 transacciones y 144.233 x 41 identity; `TransactionID` int64, único y sin nulos en ambos; join 24,42 % y 0 identity huérfanas; target 3,50 %; rango temporal y missing documentados. Síntesis en `docs/eda_report.md`.
 
 ## Fase C — Data understanding y EDA
 
@@ -209,9 +210,12 @@ Evidencia completa en `docs/client_features_report.md`; segunda ejecución en `d
 
 ## Fase O — Documentación y revisión final
 
+> Completada (2026-10-19): revisión de los 9 criterios de `specs.md §15` con evidencia en `docs/acceptance_report.md`; README y `tasks.md` actualizados. 121 tests y pre-commit en verde. Sin cambios de modelo ni nueva lectura de `test`.
+
 ### T-O01 Revisión cruzada contra criterios de aceptación
 - **Objetivo:** confirmar que el proyecto cumple `specs §15`.
 - **Descripción:** verificar etapa por etapa los criterios de aceptación y completar la documentación pendiente del repositorio.
 - **Dependencias:** todas las fases obligatorias.
 - **Archivos/componentes probables:** actualización de README/docs, checklist de aceptación.
 - **Verificación:** todos los criterios de `specs §15` se cumplen o quedan documentados los pendientes y riesgos conocidos.
+- **Resultado:** los 9 criterios se cumplen con evidencia verificable. Se corrigió una etiqueta de cobertura en `docs/eda_report.md` (DeviceType 23,84 %; join con identity 24,42 %). Riesgos abiertos documentados: recall 0,7707 en `test`, T-E02 desplegado sin métrica de `test`, historial externo en producción, artefactos no versionados y fases M/N diferidas.

@@ -5,7 +5,7 @@ Fecha: 2026-09-25. Resultados: `reports/eda/eda_results.json`; gráficos en `rep
 ## 1. Alcance y método
 
 - Carga de `train_transaction.csv` (590,540 x 394) y `train_identity.csv` (144,233 x 41).
-- Join left por `TransactionID` para el análisis de variables de identity (cobertura 23.84%).
+- Join left por `TransactionID` para el análisis de variables de identity (cobertura 24.42% de las transacciones; `DeviceType` no nulo en 23.84%).
 - Análisis de: tipos de datos, missing values, cardinalidad, distribuciones, target, temporalidad, correlaciones y tasas de fraude por categoría.
 
 ## 2. Tipos de datos

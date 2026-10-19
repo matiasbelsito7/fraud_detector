@@ -16,6 +16,8 @@ Fase K completada (2026-10-19): los experimentos de las Fases G–J quedaron reg
 
 Fase L completada (2026-10-19): pipeline de inferencia en `src/inference/pipeline.py` y configuración desplegable en `config/deployment.json` (T-E02, umbral `0,008480`, digests de artefactos). Recibe una transacción con historial opcional, aplica el mismo preprocessing y feature engineering, verifica el orden de las 791 features y devuelve probabilidad y clase. La prueba real con 434.176 filas de historial dio probabilidad idéntica al pipeline por lotes (diferencia 0,00e+00), sin cargar `test`. Reporte: `docs/inference_report.md`; demostración: `uv run run_inference.py`.
 
+Fase O completada (2026-10-19): revisión de los 9 criterios de `specs.md §15`, todos cumplidos con evidencia verificable. El alcance inicial (fases A–L) queda cerrado; las fases M (API) y N (Docker/CI/monitoring) siguen diferidas. Checklist completo y riesgos abiertos en `docs/acceptance_report.md`.
+
 ## Documentación
 
 - `agents.md` — cómo trabajan los agentes.
@@ -33,6 +35,7 @@ Fase L completada (2026-10-19): pipeline de inferencia en `src/inference/pipelin
 - `docs/explainability_report.md` — importancia global, SHAP por familia y explicaciones individuales (Fase J).
 - `docs/tracking_report.md` — registro de experimentos G–J en MLflow: store, inventario de runs, trazabilidad y límites (Fase K).
 - `docs/inference_report.md` — pipeline de inferencia: contrato de entrada, transformaciones, configuración desplegable, verificación y límites (Fase L).
+- `docs/acceptance_report.md` — checklist de los criterios de `specs.md §15`, verificaciones ejecutadas y riesgos abiertos (Fase O).
 
 ## Pipeline de ejecución
 
