@@ -173,7 +173,7 @@ Evidencia completa en `docs/client_features_report.md`; segunda ejecución en `d
 
 ## Fase K — Experiment tracking (MLflow)
 
-Transversal a las Fases G–J.
+> Completada (2026-10-19): registro por **backfill** en `src/tracking/` + `run_tracking.py`; store SQLite en `mlruns/mlflow.db` (gitignored), 50 runs idempotentes, 9 tests y reporte en `docs/tracking_report.md`. No reentrena ni vuelve a leer `test`.
 
 ### T-K01 Registrar experimentos en MLflow
 - **Objetivo:** trazabilidad y comparación de experimentos.
@@ -181,6 +181,7 @@ Transversal a las Fases G–J.
 - **Dependencias:** T-G01 (y se alimenta de G–J).
 - **Archivos/componentes probables:** integración MLflow en entrenamiento/evaluación, configuración del tracking.
 - **Verificación (specs §15 — experimentos registrados):** cada experimento relevante queda registrado con código, datos, configuración y resultados asociados, reproducible y comparable.
+- **Resultado:** Fases G–J registradas leyendo los JSON/CSV de `reports/` y `docs/`, sin reentrenar ni cargar `test`. Cada run lleva `git_commit` de la fase que lo produjo, `split_sha256`, `config_id`/rondas y tag `test_usado`; la Fase I es el único con `test_usado=true`. Los modelos seleccionados se registran en formato MLflow (flavor LightGBM). Idempotencia por `tags.tracking_key` (segunda ejecución: 0 creados, 50 omitidos).
 
 ## Fase L — Pipeline de inferencia
 

@@ -12,6 +12,8 @@ Fase I completada. El modelo final de la Fase H (LightGBM, configuración 18) ti
 
 Fase J completada (2026-10-18) sobre el artefacto hoy seleccionado (`model_final.joblib`, config 11): importancia global y SHAP con TreeSHAP nativo de LightGBM, sin cargar `test`. `V258` concentra la mayor ganancia (10,25 %); por `|SHAP|` encabezan `C13`, `since_first_sec_card1` y `TransactionAmt`. Las 29 features de cliente aportan 15,48 % del `|SHAP|`, pero eso no certifica su mejora. Reporte: `docs/explainability_report.md`; artefactos en `reports/explainability/` (gitignored).
 
+Fase K completada (2026-10-19): los experimentos de las Fases G–J quedaron registrados en MLflow mediante un **backfill** que lee los reportes ya existentes, sin reentrenar y **sin volver a leer `test`**. Store SQLite local en `mlruns/mlflow.db` (gitignored), 50 runs idempotentes por tag. La Fase I es el único run con `test_usado=true`. Reporte: `docs/tracking_report.md`; ejecución: `uv run run_tracking.py`.
+
 ## Documentación
 
 - `agents.md` — cómo trabajan los agentes.
@@ -27,6 +29,7 @@ Fase J completada (2026-10-18) sobre el artefacto hoy seleccionado (`model_final
 - `docs/evaluation_report.md` — fijación del umbral, resultado en `test` y conclusión sobre el objetivo de recall.
 - `docs/client_features_report.md` — identidad de cliente (T-E02): análisis, implementación, medición y veredicto negativo.
 - `docs/explainability_report.md` — importancia global, SHAP por familia y explicaciones individuales (Fase J).
+- `docs/tracking_report.md` — registro de experimentos G–J en MLflow: store, inventario de runs, trazabilidad y límites (Fase K).
 
 ## Pipeline de ejecución
 
@@ -43,11 +46,14 @@ uv run run_tuning.py
 uv run run_threshold.py
 uv run run_evaluation.py
 uv run run_explainability.py
+uv run run_tracking.py
 ```
 
 `run_threshold.py` fija el umbral y **no carga `test`**. `run_evaluation.py` es el único script que lo lee, y aborta si ya figura consumido, si el umbral no está registrado, si la config no coincide o si el digest de los datos cambió respecto al registrado en `threshold.json`. Ya se ejecutó una vez (Fase I) y **no debe volver a ejecutarse**. La comprobación de digest **ya no protege** por sí sola, porque `run_threshold.py` se re-ejecutó para T-E02 y regeneró `threshold.json` con el digest vigente; el freno efectivo es ahora el candado `config/test_consumed.json`, que registra cada consumo de `test` con independencia de los datos y bloquea la ejecución salvo `--force` explícito (que deja traza). El registro de la Fase I está en `reports/evaluation/fase_i_baseline/test_metrics.json`.
 
 `run_explainability.py` **no carga `test`** y no necesita la salida de `run_evaluation.py`: se apoya en `model_final.joblib` y `threshold.json`, y explica `validation` con TreeSHAP nativo de LightGBM.
+
+`run_tracking.py` registra en MLflow los resultados de las Fases G–J leyendo `reports/` y `docs/`; **no reentrena ni carga `test`**. Es idempotente (salvo `--force`) y su store por defecto es `mlruns/mlflow.db` (gitignored), por lo que no versiona datos.
 
 ## Estructura inicial
 
@@ -68,4 +74,5 @@ Estructura provisional; puede ajustarse según las decisiones tomadas en fases s
 - Python 3.14, gestionado con **uv**.
 - Dependencias declaradas en `pyproject.toml` (grupo de desarrollo en `[dependency-groups]`); versiones bloqueadas en `uv.lock`.
 - Entorno virtual: `.venv/` (no versionado). Sincronizar con `uv sync`.
+- Experiment tracking con **MLflow** (Fase K); el store vive en `mlruns/` (no versionado).
 - Ejecutar scripts y herramientas con `uv run ...` (p. ej. `uv run run_eda.py`).
