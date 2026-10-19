@@ -161,12 +161,15 @@ Evidencia completa en `docs/client_features_report.md`; segunda ejecución en `d
 
 ## Fase J — Explainability
 
+> Completada (2026-10-18): importancia global (gain/split) y SHAP (TreeSHAP nativo de LightGBM) en `src/explainability/`, ejecución `run_explainability.py`, 14 tests y reporte en `docs/explainability_report.md`; artefactos en `reports/explainability/` (gitignored). `test` no se carga; la explicabilidad es descriptiva y no participa de ninguna selección.
+
 ### T-J01 Analizar explicabilidad global e individual
 - **Objetivo:** entender las predicciones del modelo.
 - **Descripción:** feature importance global y SHAP (global e individual cuando sea posible); artefactos asociados al experimento (`specs §9`).
 - **Dependencias:** T-I01.
 - **Archivos/componentes probables:** reporte de importancia, análisis SHAP, artefactos exportados.
 - **Verificación:** existen artefactos de explainability reproducibles y asociados al modelo seleccionado.
+- **Resultado:** modelo explicado `artifacts/model_final.joblib` (config 11, T-E02, 439 rondas, 791 features) sobre una muestra determinista de 5.000 filas de `validation` (`seed=42`). Aditividad SHAP verificada (error máximo 2,25 × 10⁻⁸) y dos ejecuciones con SHA-256 idéntico. `V258` domina la ganancia (10,25 %); por `|SHAP|` el orden lo encabezan `C13`, `since_first_sec_card1` y `TransactionAmt`. Las 29 features de cliente aportan 13,28 % de ganancia y 15,48 % de `|SHAP|`, aunque su mejora sigue sin certificarse. 333 de los 355 indicadores de missing nunca se usan. Detalle y casos individuales (TP/FN/FP) en `docs/explainability_report.md`.
 
 ## Fase K — Experiment tracking (MLflow)
 
