@@ -110,7 +110,7 @@ Evidencia completa en `docs/client_features_report.md`; segunda ejecución en `d
 
 #### Pendiente de decisión
 
-1. **Qué modelo se despliega:** `artifacts/model_final.joblib` (T-E02, 12,5 MB) o `artifacts/model_final_fase_h.joblib` (Fase H, 3,1 MB, el único con métricas de `test`). No se puede dirimir con rigor sin un holdout limpio, y `test` ya se consumió.
+1. **Qué modelo se despliega:** resuelto en Fase L: se despliega `artifacts/model_final.joblib` (T-E02) con umbral `0,008480`, por su mejor punto operativo en `validation` (mismo recall con 11,30 % de alertas frente a 12,87 %). No es una mejora certificada: las métricas de `test` siguen correspondiendo a Fase H. `artifacts/model_final_fase_h.joblib` se conserva como referencia. Detalle en `docs/inference_report.md`.
 2. **Guarda técnica de `test`:** al re-ejecutarse `run_threshold.py`, `threshold.json` se regeneró con el digest vigente y **la precondición de digest de `run_evaluation.py` dejó de proteger**. Resuelto (2026-09-27): se añadió el candado versionado `config/test_consumed.json`, que registra cada consumo de `test` con independencia de los datos; `run_evaluation.py` aborta si ya figura consumido, salvo `--force` explícito que deja traza. El consumo de la Fase I quedó registrado como primer asiento.
 3. **Numeración:** T-E02 queda dentro de la Fase E, como está, para no romper la secuencia y dejar explícito que el consumo de test no se repite.
 4. **Hallazgo adyacente, fuera de alcance:** `card1`, `addr1`, `card2`, `card3`, `addr2`, `D1`, `P_emaildomain` y `ProductCD` están guardadas como **float**, así que LightGBM corta por umbrales numéricos sobre identificadores que no tienen orden. Nunca se trataron como categóricas. Es un cambio de una línea por columna y probablemente mueva el AUC tanto como T-E02, pero es otra decisión y queda aparte.
@@ -185,12 +185,15 @@ Evidencia completa en `docs/client_features_report.md`; segunda ejecución en `d
 
 ## Fase L — Pipeline de inferencia
 
+> Completada (2026-10-19): pipeline en `src/inference/pipeline.py`, configuración autocontenida en `config/deployment.json`, demostración en `run_inference.py`, 7 tests y reporte en `docs/inference_report.md`. Verificación real: una fila de `validation` con 434.176 transacciones de historial predice idéntico al pipeline por lotes (diferencia 0,00e+00). `test` no se carga.
+
 ### T-L01 Implementar inferencia consistente con entrenamiento
 - **Objetivo:** que una nueva transacción atraviese todo el pipeline.
 - **Descripción:** recibir una transacción, aplicar exactamente las transformaciones del entrenamiento, generar probabilidad, aplicar threshold configurable y devolver predicción interpretable (`specs §11`).
 - **Dependencias:** T-D01, T-E01, T-I01.
 - **Archivos/componentes probables:** módulo de inferencia, pipeline compartido de transformaciones, tests de consistencia.
 - **Verificación (specs §15 — pipeline completo, inferencia consistente):** una transacción atraviesa el pipeline de punta a punta y la inferencia utiliza el mismo procesamiento que el entrenamiento.
+- **Resultado:** `InferencePipeline` valida sha256 de modelo y preprocessor, reconstruye el esquema desde `feature_names_in_`, concatena historial + transacción, rechaza historial futuro, ejecuta preprocessing y feature engineering, verifica el orden exacto de las 791 features y aplica el umbral. El historial es opcional con degradación documentada (centinelas, sin error). La demostración real usa T-E02 y compara contra `split.parquet` sin diferencias.
 
 ## Fases diferidas
 
