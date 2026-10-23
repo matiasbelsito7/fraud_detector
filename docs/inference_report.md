@@ -36,7 +36,7 @@ Las columnas que falten se rellenan de forma **explicita y uniforme**: numericas
 
 ## 4. Configuracion desplegable
 
-`config/deployment.json` es autocontenido (no depende de `reports/`, gitignored): variante, rutas de modelo y preprocessor, **sha256 de ambos artefactos**, umbral, `config_id`, rondas, `split_sha256` y `target_recall`. `Deployment.load` aborta si un artefacto no coincide con su digest, de modo que un modelo reentrenado no se sirve con un umbral viejo por accidente.
+`config/deployment.json` es autocontenido (no depende de `reports/`, gitignored): variante, rutas de modelo y preprocessor, **sha256 de ambos artefactos**, umbral, `config_id`, rondas, `split_sha256`, `target_recall`, `categorical_encoding` (Fase P; `ordinal` en el modelo desplegado, `native` soportado pero no certificado) y `drift_reference` opcional (Fase Q). `Deployment.load` aborta si un artefacto no coincide con su digest, de modo que un modelo reentrenado no se sirve con un umbral viejo por accidente; la API tambien aborta si la referencia de drift configurada no existe.
 
 ## 5. Verificacion end-to-end
 

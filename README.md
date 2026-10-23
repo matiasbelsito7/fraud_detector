@@ -22,6 +22,10 @@ Fase M completada (2026-10-19): API FastAPI en `src/api/` y `run_api.py`, con `G
 
 Fase N completada (2026-10-19): `Dockerfile` + `docker-compose.yml` (artefactos montados read-only, healthcheck, usuario no root), CI en GitHub Actions (calidad + build de imagen) y monitoring Prometheus en `GET /metrics`. El build local no pudo completarse por falta de espacio en disco del host; el job `docker` de CI lo valido en Linux (run `39338449866`). Reporte: `docs/operations_report.md`.
 
+Fase P completada (2026-10-20): robustez metodológica (evaluación por seeds, presupuestos de alerta y bootstrap) y **ablación del encoding categórico** (E0/E1) sobre `train`, sin cargar `validation` ni `test`. El encoding nativo de LightGBM sube PR-AUC (+0,0068) pero de forma no consistente entre pliegues, baja ROC-AUC en todos los pliegues (−0,0094) y reduce el recall a 10/12/15 % de alertas (hasta −2,3 puntos). **No se certifica y no se despliega**: se mantiene `ordinal`. Reporte: `docs/ablation_report.md`; ejecución: `uv run run_ablation.py`.
+
+Fase Q completada (2026-10-22): monitorización de **drift de features** sobre la matriz que consume el modelo. La referencia se construye solo con `train` (25 features de mayor ganancia, 10 bins, bucket de missing); `test` no se carga y `validation` solo se contrasta de forma descriptiva. PSI en memoria con ventana exponencial, `GET /drift` y gauges Prometheus (`fraud_drift_*`) en `GET /metrics`. El contraste con `validation` detecta deriva temporal esperable (PSI máximo 4,96), lo que valida la sensibilidad del monitor sin usarlo para seleccionar nada. Reporte: `docs/drift_report.md`; ejecución: `uv run run_drift.py`.
+
 ## Documentación
 
 - `agents.md` — cómo trabajan los agentes.
@@ -42,6 +46,8 @@ Fase N completada (2026-10-19): `Dockerfile` + `docker-compose.yml` (artefactos 
 - `docs/acceptance_report.md` — checklist de los criterios de `specs.md §15`, verificaciones ejecutadas y riesgos abiertos (Fase O).
 - `docs/api_report.md` — API FastAPI: contrato, carga del modelo, errores, ejecución y límites (Fase M).
 - `docs/operations_report.md` — Docker, CI/CD, tests automatizados y monitoring Prometheus (Fase N).
+- `docs/ablation_report.md` — robustez por seeds, presupuestos de alerta y ablación ordinal vs categórico nativo (Fase P).
+- `docs/drift_report.md` — monitorización de drift: referencia, PSI, API, métricas y límites (Fase Q).
 
 ## Pipeline de ejecución
 
@@ -60,6 +66,7 @@ uv run run_evaluation.py
 uv run run_explainability.py
 uv run run_tracking.py
 uv run run_inference.py
+uv run run_drift.py
 ```
 
 `run_threshold.py` fija el umbral y **no carga `test`**. `run_evaluation.py` es el único script que lo lee, y aborta si ya figura consumido, si el umbral no está registrado, si la config no coincide o si el digest de los datos cambió respecto al registrado en `threshold.json`. Ya se ejecutó una vez (Fase I) y **no debe volver a ejecutarse**. La comprobación de digest **ya no protege** por sí sola, porque `run_threshold.py` se re-ejecutó para T-E02 y regeneró `threshold.json` con el digest vigente; el freno efectivo es ahora el candado `config/test_consumed.json`, que registra cada consumo de `test` con independencia de los datos y bloquea la ejecución salvo `--force` explícito (que deja traza). El registro de la Fase I está en `reports/evaluation/fase_i_baseline/test_metrics.json`.
@@ -70,12 +77,16 @@ uv run run_inference.py
 
 `run_inference.py` demuestra el pipeline completo con una fila de `validation` y su historial previo; **no carga `test`**. Usa `config/deployment.json` y exige que los artefactos coincidan con sus sha256. Para servir una transacción nueva, usar `InferencePipeline.load(...).predict(...)` con el historial del cliente.
 
-La API se levanta aparte de la cadena batch: `uv run run_api.py` (por defecto `127.0.0.1:8000`). Expone `GET /health`, `POST /predict` y `GET /metrics` (Prometheus), y documenta el contrato en `docs/api_report.md`. No carga `test`. También puede ejecutarse en Docker: `docker compose up --build` (requiere `artifacts/`).
+La API se levanta aparte de la cadena batch: `uv run run_api.py` (por defecto `127.0.0.1:8000`). Expone `GET /health`, `POST /predict`, `GET /drift` y `GET /metrics` (Prometheus), y documenta el contrato en `docs/api_report.md`. No carga `test`. También puede ejecutarse en Docker: `docker compose up --build` (requiere `artifacts/`).
+
+`run_drift.py` construye la referencia de drift con `train` (25 features de mayor ganancia, 10 bins) y la contrasta de forma descriptiva con `validation`; **no carga `test`**. Escribe `artifacts/drift_reference.json` y `reports/drift/summary.json` (ambos gitignored). La API lo usa si `deployment.json` declara `drift_reference`. Detalle en `docs/drift_report.md`.
+
+`run_ablation.py` es un análisis puntual fuera de la cadena batch: compara ordinal vs categórico nativo con la configuración seleccionada, varios seeds y presupuestos de alerta. **Solo carga `train`** y escribe `reports/ablation/summary.json` (gitignored). No cambia el modelo desplegado; el veredicto está en `docs/ablation_report.md`.
 
 ## Estructura inicial
 
 ```
-artifacts/  Modelos serializados (no versionados)
+artifacts/  Modelos serializados y referencia de drift (no versionados)
 data/       Datos raw y derivados (no versionados)
 notebooks/  Análisis exploratorio (EDA)
 reports/    Resultados de las fases (no versionados)

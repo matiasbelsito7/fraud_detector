@@ -230,3 +230,67 @@ Evidencia completa en `docs/client_features_report.md`; segunda ejecución en `d
 - **Archivos/componentes probables:** actualización de README/docs, checklist de aceptación.
 - **Verificación:** todos los criterios de `specs §15` se cumplen o quedan documentados los pendientes y riesgos conocidos.
 - **Resultado:** los 9 criterios se cumplen con evidencia verificable. Se corrigió una etiqueta de cobertura en `docs/eda_report.md` (DeviceType 23,84 %; join con identity 24,42 %). Riesgos abiertos documentados: recall 0,7707 en `test`, T-E02 desplegado sin métrica de `test`, historial externo en producción, artefactos no versionados y fase N diferida (M y N se completaron después).
+
+## Fase P — Robustez metodológica y ablación categórica
+
+> Completada (2026-10-20): evaluación repetida por seeds y presupuestos de alerta en `src/modeling/robustness.py` y `src/modeling/metrics.py`, soporte de encoding categórico nativo en `src/preprocessing/categoricals.py` y en todo el camino de entrenamiento/inferencia, y ablación E0/E1 en `run_ablation.py`. Reporte en `docs/ablation_report.md`; artefacto en `reports/ablation/summary.json` (gitignored). Solo `train`; `validation` y `test` no se cargan.
+
+### T-P01 Medir robustez con seeds y presupuestos de alerta
+- **Objetivo:** que una comparación de modelos no dependa de un seed ni de un umbral puntual.
+- **Descripción:** añadir evaluación repetida por seeds sobre los pliegues walk-forward de `train`, métricas a presupuestos fijos de alerta (10 %, 12 %, 15 %) e intervalos bootstrap; hacer el desempate del tuning total y determinista (`mean PR-AUC` → `mean ROC-AUC` → `min PR-AUC` → `config_id` ascendente).
+- **Dependencias:** T-H01, T-I01.
+- **Archivos/componentes:** `src/modeling/metrics.py`, `src/modeling/evaluate.py`, `src/modeling/robustness.py`, `src/modeling/tuning.py`, `run_tuning.py`, tests.
+- **Verificación:** los tests cubren el umbral por presupuesto, el bootstrap determinista, la evaluación repetida y los desempates por peor pliegue y `config_id`.
+- **Resultado:** `evaluate_repeated` evalúa 2 seeds × N pliegues y devuelve métricas por seed, agregadas y **por pliegue**; `bootstrap_ci` es determinista por seed. El criterio de selección no cambió porque no hubo empates en la búsqueda existente; queda documentado como regla futura.
+
+### T-P02 Soportar encoding categórico nativo de punta a punta
+- **Objetivo:** poder comparar el encoding ordinal histórico con el categórico nativo sin duplicar pipelines.
+- **Descripción:** añadir `src/preprocessing/categoricals.py` con el desplazamiento `-1 → 0` que exige LightGBM y un selector de encoding (`ordinal` por defecto, `native` opcional); propagarlo a entrenamiento, evaluación, tuning, ajuste final e inferencia. El parquet y el preprocessor no cambian.
+- **Dependencias:** T-P01.
+- **Archivos/componentes:** `src/preprocessing/categoricals.py` (nuevo), `src/modeling/{train,evaluate,tuning}.py`, `src/inference/pipeline.py`, `config/deployment.json`, tests.
+- **Verificación:** la inferencia con `categorical_encoding: native` reproduce la probabilidad del modelo nativo; un encoding inválido aborta; los códigos desplazados no mutan la matriz original.
+- **Resultado:** soporte implementado y testeado. `config/deployment.json` declara explícitamente `ordinal`, que es lo que usa el modelo desplegado.
+
+### T-P03 Ejecutar la ablación E0/E1 y decidir
+- **Objetivo:** medir si tratar las 19 columnas categóricas como nativas mejora el modelo desplegable.
+- **Descripción:** misma configuración ganadora (config 11, 439 rondas), 4 pliegues walk-forward de 3 semanas, seeds 42 y 43, encoding ordinal vs nativo, PR-AUC/ROC-AUC y recall a 10/12/15 % de alertas.
+- **Dependencias:** T-P02.
+- **Verificación (specs §15 — test aislado):** `run_ablation.py` no puede cargar `validation` ni `test`; el resumen declara `test_usado: false` y `entrenado_y_evaluado_en: train`.
+- **Resultado:** **no se certifica como mejora y no se despliega.** PR-AUC +0,0068 de media, pero con el pliegue más reciente en contra (−0,014/−0,015) y con solapamiento total de los IC bootstrap; ROC-AUC empeora en los 8 pares pliegue–seed (−0,0094 de media); el recall a 10/12/15 % de alertas cae 1,0/1,5/2,3 puntos. Se conserva `ordinal`. Detalle en `docs/ablation_report.md`.
+
+### T-P04 Documentar y cerrar
+- **Objetivo:** dejar trazabilidad de la ablación y de la decisión.
+- **Descripción:** reporte nuevo, actualización de `README.md`, `tasks.md`, `docs/tuning_report.md` y `config/deployment.json`.
+- **Verificación:** ruff, black, mypy y la suite completa (144 tests) en verde; dos ejecuciones de la ablación con los mismos agregados y métricas por pliegue.
+
+## Fase Q — Monitorización de drift
+
+> Completada (2026-10-22): PSI sobre la matriz preprocesada que consume el modelo, referencia construida solo con `train`, callback de observación en inferencia, `GET /drift` y gauges Prometheus. `test` no se carga; `validation` solo se contrasta de forma descriptiva. Reporte en `docs/drift_report.md`.
+
+### T-Q01 Calcular PSI y perfiles de referencia
+- **Objetivo:** medir cambios en las features de entrada sin ground truth.
+- **Descripción:** perfiles numéricos por cuantiles con bucket de missing, PSI con `epsilon`, serialización JSON con metadatos y validación de integridad; ventana exponencial acotada en memoria.
+- **Dependencias:** T-L01, T-P04.
+- **Archivos/componentes:** `src/monitoring/drift.py` (nuevo), tests.
+- **Verificación:** PSI cero para la misma distribución, PSI alto ante desplazamiento, bins degenerados y constantes, missing, round-trip JSON y estados `stable`/`moderate`/`significant`/`no_data`.
+- **Resultado:** implementado y cubierto por tests. `FeatureProfile` valida que las proporciones sumen 1 y que el bucket de missing exista.
+
+### T-Q02 Construir la referencia desde train
+- **Objetivo:** fijar una referencia reproducible sin tocar `test`.
+- **Descripción:** `run_drift.py` selecciona las 25 features de mayor ganancia del modelo desplegado, muestrea 50.000 filas de `train` (`seed=42`), construye 10 bins por feature y escribe `artifacts/drift_reference.json` + `reports/drift/summary.json`. Excluye `TransactionDT` por ser un índice temporal monotónico.
+- **Dependencias:** T-Q01.
+- **Verificación:** el resumen declara `test_usado: false` y `source: train`; `validation`, si se compara, es solo descriptiva.
+- **Resultado:** referencia generada. El contraste con las 77.822 filas de `validation` da estado `significant` y PSI máximo 4,95893, concentrado en features históricas; es deriva temporal esperable y no se usa para seleccionar nada.
+
+### T-Q03 Integrar el monitor en inferencia y API
+- **Objetivo:** observar exactamente la fila que consume el modelo y exponer el estado.
+- **Descripción:** callback opcional `observe` en `InferencePipeline.predict`, `drift_reference` en `Deployment`/`config/deployment.json`, carga del monitor en el lifespan, `GET /drift` y gauges `fraud_drift_*` actualizados al scrapear `/metrics`.
+- **Dependencias:** T-Q02, T-M01.
+- **Verificación:** una predicción incrementa `n_observations`; `/drift` responde `enabled=false` sin referencia; `/metrics` publica PSI y conteos; si la ruta configurada falta, la app no arranca.
+- **Resultado:** API real arranca con la referencia y `/drift` devuelve `enabled=true`, `status=no_data` y 25 features antes de la primera predicción. Un fallo del monitor no bloquea la predicción: se registra un warning.
+
+### T-Q04 Documentar y cerrar
+- **Objetivo:** dejar trazabilidad del diseño y de los resultados.
+- **Descripción:** reporte nuevo, actualización de `README.md`, `tasks.md`, `docs/operations_report.md` y `.gitignore`.
+- **Verificación:** ruff, black, mypy y suite completa en verde; `run_drift.py` reproducible y `test` intacto.
+- **Resultado:** `docs/drift_report.md` documenta referencia, umbrales, resultados de `validation`, API, métricas y límites.

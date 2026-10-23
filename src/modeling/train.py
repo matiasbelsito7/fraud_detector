@@ -6,10 +6,17 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from lightgbm import LGBMClassifier
 
 from src.modeling.dataset import TRAIN_SET, VAL_SET, SplitData
 from src.modeling.metrics import DEFAULT_THRESHOLD, summarize
 from src.modeling.models import Candidate
+from src.preprocessing.categoricals import (
+    NATIVE_ENCODING,
+    ORDINAL_ENCODING,
+    categorical_columns,
+    prepare_categoricals,
+)
 
 
 @dataclass(frozen=True)
@@ -61,14 +68,23 @@ def evaluate_candidate(
     valid: SplitData,
     threshold: float = DEFAULT_THRESHOLD,
     seed: int = 42,
+    encoding: str = ORDINAL_ENCODING,
 ) -> RunResult:
     """Ajusta en `train` y evalua en `validation`. `test` nunca se toca."""
     X_train, y_train = subsample(train.X, train.y, candidate.max_rows, seed=seed)
+    X_train = prepare_categoricals(X_train, encoding=encoding, copy=False)
+    X_valid = prepare_categoricals(valid.X, encoding=encoding, copy=False)
+    fit_kwargs: dict[str, Any] = (
+        {"categorical_feature": categorical_columns(X_train.columns)}
+        if isinstance(candidate.estimator, LGBMClassifier)
+        and encoding == NATIVE_ENCODING
+        else {}
+    )
     started = time.perf_counter()
-    candidate.estimator.fit(X_train, y_train)
+    candidate.estimator.fit(X_train, y_train, **fit_kwargs)
     fit_seconds = time.perf_counter() - started
 
-    y_score = candidate.estimator.predict_proba(valid.X)[:, 1]
+    y_score = candidate.estimator.predict_proba(X_valid)[:, 1]
     metrics = summarize(valid.y, y_score, threshold=threshold)
     return RunResult(
         name=candidate.name,
@@ -87,10 +103,13 @@ def run_candidates(
     valid: SplitData,
     threshold: float = DEFAULT_THRESHOLD,
     seed: int = 42,
+    encoding: str = ORDINAL_ENCODING,
 ) -> tuple[pd.DataFrame, list[RunResult]]:
     """Compara candidatos bajo condiciones equivalentes (misma division y features)."""
     results = [
-        evaluate_candidate(c, train, valid, threshold=threshold, seed=seed)
+        evaluate_candidate(
+            c, train, valid, threshold=threshold, seed=seed, encoding=encoding
+        )
         for c in candidates
     ]
     table = pd.DataFrame([r.as_row() for r in results])

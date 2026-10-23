@@ -1,6 +1,6 @@
 {
   "variant": "te02",
-  "descripcion": "Modelo T-E02 con identidad de cliente; umbral fijado en validation tras re-ejecutar run_threshold.py (test no leido).",
+  "descripcion": "Modelo T-E02 con identidad de cliente; umbral fijado en validation tras re-ejecutar run_threshold.py (test no leido). Encoding ordinal (ablacion E0/E1: nativo no certificado).",
   "model_artifact": "artifacts/model_final.joblib",
   "model_sha256": "3d2324a926180dca50bd9dc4974808610867233c63a547ff02091d2c9c8318e4",
   "preprocessor_artifact": "artifacts/preprocessor.joblib",
@@ -10,6 +10,8 @@
   "config_id": 11,
   "rounds": 439,
   "split_sha256": "162c566a169f740f536c38070343f167b67343536b8dd25be8f79acc8a5d7b5c",
+  "categorical_encoding": "ordinal",
+  "drift_reference": "artifacts/drift_reference.json",
   "target_recall": 0.8,
   "test_usado": false,
   "fecha": "2026-10-19"

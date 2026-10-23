@@ -7,6 +7,7 @@ import pytest
 from src.modeling.dataset import SplitData, extract
 from src.modeling.evaluate import (
     TARGET_RECALL,
+    bootstrap_ci,
     curve_points,
     out_of_fold_scores,
     recall_interval,
@@ -14,8 +15,14 @@ from src.modeling.evaluate import (
     threshold_sweep,
 )
 from src.modeling.folds import walk_forward_folds
-from src.modeling.metrics import summarize
+from src.modeling.metrics import (
+    pr_auc,
+    summarize,
+    summarize_at_alert_rates,
+    threshold_for_alert_rate,
+)
 from src.modeling.space import BASE_PARAMS
+from src.preprocessing.categoricals import NATIVE_ENCODING
 
 
 def _toy_split(n_weeks: int = 12, rows_per_week: int = 50, seed: int = 11) -> SplitData:
@@ -178,6 +185,7 @@ def test_la_evaluacion_no_puede_alcanzar_validation_ni_test() -> None:
         "folds",
         "seed",
         "strict",
+        "encoding",
     ]
     # y el umbral tampoco acepta otro conjunto: solo y_true/y_score ya puntuados
     for fn in (threshold_for_target_recall, threshold_sweep):
@@ -256,6 +264,47 @@ def test_extract_sigue_excluyendo_test_por_default() -> None:
     assert "f" in out.X.columns
     assert "isFraud" not in out.X.columns
     assert "split_set" not in out.X.columns
+
+
+def test_out_of_fold_scores_admite_categoricas_nativas() -> None:
+    split = _toy_split(n_weeks=12, rows_per_week=50, seed=17)
+    X = split.X.assign(
+        card1=(np.arange(split.n_rows) % 17).astype("float32"),
+        addr1=(np.arange(split.n_rows) % 11).astype("float32"),
+    )
+    split = SplitData(name="train", X=X, y=split.y)
+    folds = walk_forward_folds(split.X["TransactionDT"], n_folds=2, val_weeks=2)
+    out = out_of_fold_scores(
+        _fast_params(), 30, split, folds, seed=42, encoding=NATIVE_ENCODING
+    )
+    assert np.isfinite(out["scores"]).any()
+    assert out["n_scored"] > 0
+    assert len(out["folds"]) == 2
+    assert all(np.isfinite(row["pr_auc"]) for row in out["folds"])
+    assert all(np.isfinite(row["roc_auc"]) for row in out["folds"])
+
+
+def test_presupuesto_de_alerta_fija_marca_el_topo() -> None:
+    rng = np.random.default_rng(5)
+    y = (rng.random(1000) < 0.1).astype(int)
+    s = rng.random(1000)
+    threshold = threshold_for_alert_rate(s, 0.10)
+    assert threshold == np.partition(s, 900)[900]
+    summaries = summarize_at_alert_rates(y, s, (0.10, 0.20))
+    assert [item["alert_rate_target"] for item in summaries] == [0.10, 0.20]
+    assert summaries[0]["predict_rate"] >= 0.10
+    assert summaries[1]["predict_rate"] >= 0.20
+
+
+def test_bootstrap_es_determinista_y_devuelve_un_intervalo() -> None:
+    rng = np.random.default_rng(6)
+    y = (rng.random(800) < 0.15).astype(int)
+    s = rng.random(800)
+    first = bootstrap_ci(y, s, pr_auc, n_boot=40, seed=11)
+    second = bootstrap_ci(y, s, pr_auc, n_boot=40, seed=11)
+    assert first == second
+    assert first["n_boot"] > 0
+    assert first["lower"] <= first["upper"]
 
 
 def test_el_candado_no_dispara_sin_registros(tmp_path) -> None:

@@ -23,7 +23,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Mapping
+import logging
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -34,8 +35,14 @@ import pandas as pd
 
 from src.features.columns import AMT, CARD1, DT, KEY
 from src.features.features import compute_features
+from src.preprocessing.categoricals import (
+    CATEGORICAL_ENCODINGS,
+    ORDINAL_ENCODING,
+    prepare_categoricals,
+)
 
 TARGET_MARKER = "__inference_target__"
+logger = logging.getLogger(__name__)
 
 #: Valor centinela para categoricas ausentes. `OrdinalEncoder` lo trata como
 #: desconocido (`unknown_value=-1`), el mismo resultado que `encoded_missing_value`
@@ -73,6 +80,8 @@ class Deployment:
     rounds: int
     split_sha256: str
     threshold_source: str
+    categorical_encoding: str = ORDINAL_ENCODING
+    drift_reference: Path | None = None
 
     @classmethod
     def load(
@@ -101,6 +110,15 @@ class Deployment:
         threshold = float(data["threshold"])
         if not 0.0 < threshold < 1.0:
             raise ValueError(f"Umbral fuera de (0, 1): {threshold}")
+        categorical_encoding = str(data.get("categorical_encoding", ORDINAL_ENCODING))
+        if categorical_encoding not in CATEGORICAL_ENCODINGS:
+            raise ValueError(
+                "categorical_encoding invalido en deployment.json: "
+                f"{categorical_encoding!r}; validos: {list(CATEGORICAL_ENCODINGS)}"
+            )
+
+        drift_value = data.get("drift_reference")
+        drift_reference = root_path / str(drift_value) if drift_value else None
 
         if verify_digest:
             actual_model = file_digest(model_path)
@@ -129,6 +147,8 @@ class Deployment:
             rounds=int(data["rounds"]),
             split_sha256=str(data["split_sha256"]),
             threshold_source=str(data.get("threshold_source", "")),
+            categorical_encoding=categorical_encoding,
+            drift_reference=drift_reference,
         )
 
 
@@ -217,8 +237,14 @@ class InferencePipeline:
         identity: pd.DataFrame | None = None,
         history_identity: pd.DataFrame | None = None,
         threshold: float | None = None,
+        observe: Callable[[pd.Series], None] | None = None,
     ) -> Prediction:
-        """Predice una transaccion; `history` debe ser estrictamente pasado."""
+        """Predice una transaccion; `history` debe ser estrictamente pasado.
+
+        `observe` recibe la fila preprocesada que consume el modelo, justo antes
+        de predecir. Se usa para monitorizar drift sin reconstruir la raw ni
+        duplicar el feature engineering.
+        """
         cut = self.deployment.threshold if threshold is None else float(threshold)
         if not 0.0 < cut < 1.0:
             raise ValueError(f"Umbral fuera de (0, 1): {cut}")
@@ -272,9 +298,18 @@ class InferencePipeline:
                 f"sobran={extra[:5]} ({len(extra)})"
             )
         X = X[self.feature_order]
+        X = prepare_categoricals(X, self.deployment.categorical_encoding, copy=False)
         # El parquet de entrenamiento guarda las features como float32; se
         # replica ese dtype para que el binning de LightGBM sea el mismo.
         X = X.astype("float32")
+
+        if observe is not None:
+            try:
+                observe(X.iloc[0])
+            except Exception:
+                logger.warning(
+                    "No se pudo registrar la observacion de drift", exc_info=True
+                )
 
         probability = float(np.asarray(self.model.predict_proba(X))[0, 1])
         return Prediction(

@@ -4,12 +4,18 @@ import json
 from pathlib import Path
 from typing import Any
 
+import joblib
 import numpy as np
 import pandas as pd
 import pytest
 from lightgbm import LGBMClassifier
 
-from src.inference.pipeline import Deployment, InferencePipeline
+from src.inference.pipeline import Deployment, InferencePipeline, file_digest
+from src.preprocessing.categoricals import (
+    NATIVE_ENCODING,
+    categorical_columns,
+    prepare_categoricals,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -32,6 +38,57 @@ def test_inferencia_fila_unica_igual_a_lote(toy: dict[str, Any]) -> None:
     assert prediction.threshold == pytest.approx(0.5)
     assert prediction.n_history == len(raw) - 1
     assert prediction.variant == "toy"
+
+
+def test_inferencia_aplica_categoricas_nativas_igual_que_entrenamiento(
+    toy: dict[str, Any],
+) -> None:
+    X = prepare_categoricals(toy["X"], NATIVE_ENCODING)
+    native_model = LGBMClassifier(
+        n_estimators=15,
+        num_leaves=4,
+        min_child_samples=2,
+        random_state=42,
+        deterministic=True,
+        force_row_wise=True,
+        n_jobs=1,
+        verbose=-1,
+    )
+    native_model.fit(
+        X,
+        toy["y"],
+        categorical_feature=categorical_columns(X.columns),
+    )
+
+    root: Path = toy["root"]
+    model_path = root / "artifacts" / "model_native.joblib"
+    joblib.dump(native_model, model_path)
+    data = json.loads(toy["deployment"].read_text(encoding="utf-8"))
+    data["model_artifact"] = "artifacts/model_native.joblib"
+    data["model_sha256"] = file_digest(model_path)
+    data["categorical_encoding"] = NATIVE_ENCODING
+    deployment_path = root / "config" / "deployment_native.json"
+    deployment_path.write_text(json.dumps(data), encoding="utf-8")
+
+    pipeline = InferencePipeline.load(deployment_path, root=root)
+    raw = toy["raw"]
+    prediction = pipeline.predict(
+        raw.iloc[-1],
+        history=raw.iloc[:-1],
+        identity=toy["identity"].tail(1),
+    )
+    probabilities = native_model.predict_proba(X.iloc[[-1]])
+    expected = float(probabilities[0][1])
+    assert prediction.probability == pytest.approx(expected, abs=1e-6)
+
+
+def test_encoding_categorico_invalido_aborta(toy: dict[str, Any]) -> None:
+    path: Path = toy["deployment"]
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["categorical_encoding"] = "onehot"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(ValueError, match="categorical_encoding invalido"):
+        InferencePipeline.load(path, root=toy["root"])
 
 
 def test_historial_futuro_rechazado(toy: dict[str, Any]) -> None:

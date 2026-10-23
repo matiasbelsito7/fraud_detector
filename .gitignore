@@ -28,6 +28,7 @@ env/
 .ipynb_checkpoints/
 
 # Artefactos y tracking
+artifacts/*.json
 mlruns/
 mlartifacts/
 *.pkl

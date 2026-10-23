@@ -31,8 +31,9 @@ El healthcheck consulta `GET /health` cada 30 s. La imagen expone `/docs`, `/hea
 
 ## 2. Tests automatizados
 
-- Suite completa: **130 tests** (`tests/`), incluidos API, inferencia, preprocessing, features, split, modelado, tuning, evaluacion, explainability y tracking.
-- Tests HTTP en `tests/test_api.py`: health, prediccion con/sin historial, historial futuro, validacion de body, threshold, identity sin ID y metricas.
+- Suite completa: **159 tests** (`tests/`, actualizado en Fase Q), incluidos API, inferencia, preprocessing, features, split, modelado, tuning, evaluacion, explainability, tracking, categoricas, robustez y drift.
+- Tests HTTP en `tests/test_api.py`: health, prediccion con/sin historial, historial futuro, validacion de body, threshold, identity sin ID, metricas y drift.
+- Tests de drift en `tests/test_drift.py`: PSI, bins, missing, constantes, serializacion y ventana.
 - Los tests no requieren artefactos reales: `tests/conftest.py` construye un pipeline de juguete determinista.
 
 ## 3. CI/CD
@@ -51,6 +52,7 @@ La API expone:
 | Endpoint | Uso |
 |---|---|
 | `GET /health` | Liveness/readiness y datos del modelo (variante, config, umbral). |
+| `GET /drift` | PSI por feature contra la referencia de `train`; `enabled=false` si no hay referencia. |
 | `GET /metrics` | Metricas Prometheus en texto. |
 
 Metricas:
@@ -60,6 +62,26 @@ Metricas:
 | `fraud_api_requests_total` | counter | `method`, `route`, `status` |
 | `fraud_api_request_duration_seconds` | histogram | `method`, `route` |
 | `fraud_api_predictions_total` | counter | `label` (`fraude`/`legitima`) |
+| `fraud_drift_psi` | gauge | `feature` |
+| `fraud_drift_observations` | gauge | - |
+| `fraud_drift_features_drifted` | gauge | - |
+| `fraud_drift_max_psi` | gauge | - |
+
+### Drift de features (Fase Q)
+
+La referencia se construye solo con `train`:
+
+```text
+uv run run_drift.py
+```
+
+El script escribe `artifacts/drift_reference.json` (gitignored) con las 25
+features de mayor ganancia, 10 bins por feature y bucket de missing. `test` no se
+carga; `validation` solo se contrasta de forma descriptiva. `config/deployment.json`
+declara `drift_reference`; si la ruta esta configurada y el archivo falta, la API
+no arranca. El monitor observa la fila preprocesada que consume el modelo, no la
+transaccion raw. Detalle, resultados de `validation` y limites en
+`docs/drift_report.md`.
 
 Ejemplo de scrape:
 
@@ -73,7 +95,9 @@ scrape_configs:
 
 `/metrics` no aparece en Swagger. Las metricas son por proceso: con varios workers hay que usar el modo multiproceso de `prometheus_client` o agregar por instancia.
 
-**Fuera de alcance:** drift de features, performance del modelo y metricas de negocio requieren ground truth diferido y un store de predicciones. No se implementan en esta fase.
+**Fuera de alcance:** performance del modelo y metricas de negocio requieren
+ground truth diferido y un store de predicciones. El drift de features de Fase Q
+es una senal de entrada, no una medida de degradacion.
 
 ## 5. Limites
 

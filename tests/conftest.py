@@ -115,6 +115,7 @@ def toy(tmp_path: Path) -> dict[str, Any]:
         "raw": raw,
         "identity": identity,
         "X": X,
+        "y": y,
         "model": model,
         "deployment": deployment_path,
         "pipeline": InferencePipeline.load(deployment_path, root=tmp_path),

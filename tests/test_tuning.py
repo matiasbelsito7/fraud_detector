@@ -24,6 +24,7 @@ from src.modeling.tuning import (
     EARLY_STOPPING_METRIC,
     SELECTION_METRIC,
     TIEBREAK_METRIC,
+    TIEBREAK_MIN_METRIC,
     build_search_params,
     confirm,
     fit_final,
@@ -208,6 +209,7 @@ def test_seleccion_gana_por_pr_auc_y_desempata_con_roc_auc() -> None:
             {
                 SELECTION_METRIC: 0.50,
                 TIEBREAK_METRIC: 0.80,
+                TIEBREAK_MIN_METRIC: 0.30,
                 "mean_recall": 0.1,
                 "best_iteration": 10,
                 "config_id": 0,
@@ -217,6 +219,7 @@ def test_seleccion_gana_por_pr_auc_y_desempata_con_roc_auc() -> None:
             {
                 SELECTION_METRIC: 0.60,
                 TIEBREAK_METRIC: 0.70,
+                TIEBREAK_MIN_METRIC: 0.50,
                 "mean_recall": 0.2,
                 "best_iteration": 20,
                 "config_id": 1,
@@ -226,6 +229,7 @@ def test_seleccion_gana_por_pr_auc_y_desempata_con_roc_auc() -> None:
             {
                 SELECTION_METRIC: 0.60,
                 TIEBREAK_METRIC: 0.90,
+                TIEBREAK_MIN_METRIC: 0.40,
                 "mean_recall": 0.3,
                 "best_iteration": 30,
                 "config_id": 2,
@@ -237,6 +241,60 @@ def test_seleccion_gana_por_pr_auc_y_desempata_con_roc_auc() -> None:
     best = select_best(tabla)
     assert best["config_id"] == 2
     assert set(best["params"]) == set(SEARCH_SPACE)
+
+
+def test_seleccion_desempata_por_peor_pliegue() -> None:
+    tabla = pd.DataFrame(
+        [
+            {
+                SELECTION_METRIC: 0.60,
+                TIEBREAK_METRIC: 0.90,
+                TIEBREAK_MIN_METRIC: 0.40,
+                "mean_recall": 0.1,
+                "best_iteration": 10,
+                "config_id": 0,
+                "is_anchor": False,
+                **{name: 1 for name in SEARCH_SPACE},
+            },
+            {
+                SELECTION_METRIC: 0.60,
+                TIEBREAK_METRIC: 0.90,
+                TIEBREAK_MIN_METRIC: 0.55,
+                "mean_recall": 0.2,
+                "best_iteration": 20,
+                "config_id": 1,
+                "is_anchor": False,
+                **{name: 2 for name in SEARCH_SPACE},
+            },
+        ]
+    )
+    assert select_best(tabla)["config_id"] == 1
+
+
+def test_seleccion_desempata_por_config_id_ascendente() -> None:
+    base = {
+        SELECTION_METRIC: 0.60,
+        TIEBREAK_METRIC: 0.90,
+        TIEBREAK_MIN_METRIC: 0.50,
+        "mean_recall": 0.2,
+        "best_iteration": 20,
+        "is_anchor": False,
+    }
+    tabla = pd.DataFrame(
+        [
+            {
+                **base,
+                "config_id": 2,
+                **{name: 2 for name in SEARCH_SPACE},
+            },
+            {
+                **base,
+                "config_id": 1,
+                **{name: 1 for name in SEARCH_SPACE},
+            },
+        ]
+    )
+    assert select_best(tabla)["config_id"] == 1
 
 
 def test_seleccion_falla_con_tabla_vacia() -> None:

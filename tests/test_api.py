@@ -9,6 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.api.app import create_app
+from src.monitoring.drift import DriftMonitor, build_reference
 
 
 def _records(frame: pd.DataFrame) -> list[dict[str, Any]]:
@@ -121,3 +122,62 @@ def test_identity_sin_transaction_id_400(client: TestClient) -> None:
     response = client.post("/predict", json=payload)
     assert response.status_code == 400
     assert "TransactionID" in response.json()["detail"]
+
+
+def test_drift_sin_referencia(client: TestClient) -> None:
+    response = client.get("/drift")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["enabled"] is False
+    assert "sin referencia" in body["reason"]
+
+
+def test_drift_observa_predicciones(toy: dict[str, Any]) -> None:
+    features = list(toy["X"].columns[:2])
+    reference = build_reference(toy["X"], features, bins=4)
+    monitor = DriftMonitor(reference)
+    with TestClient(
+        create_app(pipeline=toy["pipeline"], drift_monitor=monitor)
+    ) as test_client:
+        before = test_client.get("/drift").json()
+        assert before["enabled"] is True
+        assert before["n_observations"] == 0
+        assert before["status"] == "no_data"
+
+        prediction = test_client.post(
+            "/predict", json={"transaction": _minimal_transaction()}
+        )
+        assert prediction.status_code == 200, prediction.text
+
+        after = test_client.get("/drift").json()
+        assert after["enabled"] is True
+        assert after["n_observations"] == 1
+        assert {item["feature"] for item in after["features"]} == set(features)
+        assert all(item["psi"] is not None for item in after["features"])
+
+        metrics = test_client.get("/metrics")
+        assert metrics.status_code == 200
+        assert "fraud_drift_psi" in metrics.text
+        assert "fraud_drift_observations 1.0" in metrics.text
+        assert "fraud_drift_features_drifted" in metrics.text
+
+
+def test_drift_se_carga_desde_deployment(toy: dict[str, Any]) -> None:
+    reference = build_reference(
+        toy["X"],
+        list(toy["X"].columns[:2]),
+        bins=4,
+        metadata={"source": "train"},
+    )
+    reference.save(toy["root"] / "artifacts" / "drift.json")
+    data = json.loads(toy["deployment"].read_text(encoding="utf-8"))
+    data["drift_reference"] = "artifacts/drift.json"
+    toy["deployment"].write_text(json.dumps(data), encoding="utf-8")
+
+    with TestClient(
+        create_app(config_path=toy["deployment"], root=toy["root"])
+    ) as test_client:
+        body = test_client.get("/drift").json()
+        assert body["enabled"] is True
+        assert body["reference"]["source"] == "train"
+        assert len(body["features"]) == 2

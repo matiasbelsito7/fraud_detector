@@ -27,7 +27,7 @@ El objetivo de negocio de recall >= 0,80 **no se cumple en `test`** (0,7707) y q
 - `uv run ruff check` sobre `src`, `tests` y los 12 `run_*.py`: OK.
 - `uv run black --check`: 51 archivos sin cambios.
 - `uv run mypy` sobre `src` y los 12 scripts: 39 archivos, sin errores.
-- `uv run pytest`: **130 tests passed**.
+- `uv run pytest`: **130 tests passed** al cerrar la Fase O; tras la Fase P la suite es de **144 tests** y sigue en verde.
 - `uv run pre-commit run --all-files`: ruff, ruff-format, black y mypy en verde.
 - `uv run run_inference.py`: probabilidad 0,000324, diferencia 0,00e+00 frente al lote, `test` no cargado.
 - Smoke de API con T-E02: `GET /health` y `POST /predict` responden `200`; `/metrics` esta cubierto por los tests HTTP con el pipeline de juguete.
@@ -47,9 +47,10 @@ El objetivo de negocio de recall >= 0,80 **no se cumple en `test`** (0,7707) y q
 2. **Modelo desplegado sin metrica de `test`:** se sirve T-E02 por su punto operativo en `validation`; su mejora no esta certificada y las cifras de `test` corresponden a Fase H. Decision y limites en `docs/inference_report.md`.
 3. **`test` consumido:** `config/test_consumed.json` bloquea una segunda lectura. Cualquier reevaluacion exigiria `--force` y quedaria trazada; no debe hacerse para elegir modelos.
 4. **Historial en produccion:** la inferencia es sin estado; el entorno debe aportar el historial previo del cliente. Sin historial la prediccion funciona pero degrada. Ademas, `compute_features` recalcula agregados sobre todo el historial, lo que puede requerir agregados incrementales a alto volumen.
-5. **Artefactos no versionados:** `data/`, `artifacts/*.joblib`, `reports/` y `mlruns/` estan gitignored. Reproducir exige los CSV raw y ejecutar la cadena de scripts.
+5. **Artefactos no versionados:** `data/`, `artifacts/*.joblib`, `artifacts/*.json`, `reports/` y `mlruns/` estan gitignored. Reproducir exige los CSV raw y ejecutar la cadena de scripts.
 6. **Fases M y N:** API y operaciones completadas (`docs/api_report.md`, `docs/operations_report.md`). Docker no se pudo smoke-testear localmente por falta de espacio; CI valida el build. No hay despliegue automatico ni registry.
-7. **Mejora adyacente no abordada:** `card1`, `addr1`, `card2`, `card3`, `addr2`, `D1`, `P_emaildomain` y `ProductCD` se tratan como numericas y no como categoricas; esta identificado en `tasks.md` y no forma parte de esta revision.
+7. **Encoding categorico nativo:** Fase P evaluo `native` vs `ordinal`; el nativo no se certifico (ROC-AUC peor en todos los pliegues y recall menor a presupuesto de alertas) y no se despliega. Se mantiene `ordinal` (`docs/ablation_report.md`).
+8. **Drift de features:** Fase Q monitorea PSI sobre la entrada del modelo con referencia de `train` (`docs/drift_report.md`). No mide performance ni reemplaza ground truth diferido; el estado es por proceso y no se persiste.
 
 ## 6. Reproduccion
 

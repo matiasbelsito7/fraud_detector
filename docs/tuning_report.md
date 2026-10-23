@@ -27,7 +27,7 @@ Ajustar hiperparámetros de LightGBM y **seleccionar el modelo definitivo** bajo
 | configuración 0 | ancla de Fase G (`num_leaves=63`, `lr=0.05`, `min_child=100`, `colsample=0.6`, `subsample=0.8`, `reg_lambda=1.0`, `spw=1.0`) | punto de comparación; permite afirmar "el tuning mejoró/no mejoró" |
 | evaluación | 3 pliegues walk-forward de `train` (§5 de `docs/modeling_report.md`) | nunca se evalúa sobre el mismo periodo en que se ajusta |
 | criterio de selección | **PR-AUC medio de los 3 pliegues** | clase positiva al 3,5 %; ROC-AUC no discrimina bien el desbalance |
-| desempate | ROC-AUC medio, luego `min_pr_auc`, luego `config_id` | criterio total y determinista |
+| desempate | ROC-AUC medio, luego `min_pr_auc`, luego `config_id` ascendente | criterio total y determinista |
 | rondas | techo 600, early stopping 30 rondas sobre `average_precision` | el corte lo fija la métrica de selección, no un número arbitrario |
 | paridad | `deterministic=True`, `force_row_wise=True`, `num_threads=-1` | replicabilidad entre hardware y número de hilos |
 
@@ -156,7 +156,8 @@ El número de rondas se toma de la mediana de los pliegues y **no** se ajusta co
 - `selected.json` y `search.json` registran semilla, número de configuraciones, SHA-256 de `split.parquet`, número de features, criterio de selección, desempate y `test_usado: false`.
 - **Verificado:** dos ejecuciones completas de `run_tuning.py` (87 min cada una) produjeron resultados idénticos. `selected.json` coincide byte a byte, y en `search.csv` **todas las columnas coinciden bit a bit salvo `seconds`**, que registra tiempo de pared y por definición varía entre ejecuciones. Los 60 ajustes reproducen los mismos `mean_pr_auc`, `std_pr_auc`, `min_pr_auc`, `mean_roc_auc`, `mean_recall` y `best_iteration`.
 - El artefacto `artifacts/model_final.joblib` se regenera en cada ejecución; su round-trip de serialización está cubierto por test.
-- Tests en `tests/test_tuning.py` (21): determinismo del muestreo, exclusividad del anclaje, conversión a tipos Python, reproducibilidad de `tune_one`, aislamiento del `test`, validad de la selección y del desempate, coincidencia de la métrica de LightGBM con scikit-learn, early stopping sobre la métrica de selección, reproducibilidad del ajuste final y round-trip de serialización. Suite completa del repositorio: 64 tests.
+- Tests en `tests/test_tuning.py` (23; se añadieron dos para los desempates por `min_pr_auc` y `config_id`): determinismo del muestreo, exclusividad del anclaje, conversión a tipos Python, reproducibilidad de `tune_one`, aislamiento del `test`, validad de la selección y del desempate, coincidencia de la métrica de LightGBM con scikit-learn, early stopping sobre la métrica de selección, reproducibilidad del ajuste final y round-trip de serialización. Suite completa del repositorio: 144 tests (Fase P).
+- **Desempate añadido después de esta ejecución (Fase P).** El criterio `min_pr_auc` → `config_id` ascendente se incorporó para que la selección sea total y determinista ante empates. `selected.json` de esta fase se generó antes del cambio y conserva el texto antiguo, pero **el resultado no cambia**: no hubo empates en `mean_pr_auc` ni en `mean_roc_auc` entre las 20 configuraciones. Una re-ejecución futura escribirá el desempate nuevo.
 
 ## 9. Riesgos y pendientes
 

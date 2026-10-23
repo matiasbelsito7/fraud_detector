@@ -140,7 +140,7 @@ def main() -> None:
         "n_features": int(train.X.shape[1]),
         "folds": len(folds),
         "criterio_seleccion": "PR-AUC medio de los pliegues walk-forward de train",
-        "desempate": "ROC-AUC medio",
+        "desempate": "ROC-AUC medio, min PR-AUC por pliegue y config_id ascendente",
         "test_usado": False,
         "entrenado_en": TRAIN_SET,
         "confirmado_en": VAL_SET,

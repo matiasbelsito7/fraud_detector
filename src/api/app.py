@@ -9,10 +9,17 @@ from typing import Any
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Request, Response
-from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    Counter,
+    Gauge,
+    Histogram,
+    generate_latest,
+)
 
 from src.api.schemas import HealthResponse, PredictionResponse, PredictRequest
 from src.inference.pipeline import InferencePipeline
+from src.monitoring.drift import DriftMonitor
 
 DEFAULT_CONFIG = Path(__file__).resolve().parents[2] / "config" / "deployment.json"
 CONFIG_ENV = "FRAUD_DEPLOYMENT_CONFIG"
@@ -32,6 +39,23 @@ PREDICTION_COUNT = Counter(
     "Predicciones servidas por etiqueta.",
     ["label"],
 )
+DRIFT_PSI = Gauge(
+    "fraud_drift_psi",
+    "PSI de la feature contra la referencia de train.",
+    ["feature"],
+)
+DRIFT_OBSERVATIONS = Gauge(
+    "fraud_drift_observations",
+    "Observaciones retenidas por el monitor de drift.",
+)
+DRIFT_DRIFTED = Gauge(
+    "fraud_drift_features_drifted",
+    "Features con drift significativo (PSI >= 0.25).",
+)
+DRIFT_MAX_PSI = Gauge(
+    "fraud_drift_max_psi",
+    "PSI maximo observado entre las features monitorizadas.",
+)
 
 
 def create_app(
@@ -39,6 +63,7 @@ def create_app(
     config_path: str | Path | None = None,
     root: str | Path | None = None,
     verify_digest: bool = True,
+    drift_monitor: DriftMonitor | None = None,
 ) -> FastAPI:
     """Crea la app; el modelo se carga una vez en el arranque (lifespan)."""
     if config_path is None:
@@ -46,13 +71,25 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        app.state.pipeline = (
+        loaded = (
             pipeline
             if pipeline is not None
             else InferencePipeline.load(
                 config_path, root=root, verify_digest=verify_digest
             )
         )
+        app.state.pipeline = loaded
+        if drift_monitor is not None:
+            app.state.drift = drift_monitor
+        elif loaded.deployment.drift_reference is not None:
+            reference = loaded.deployment.drift_reference
+            if not reference.exists():
+                raise FileNotFoundError(
+                    f"Falta la referencia de drift configurada: {reference}"
+                )
+            app.state.drift = DriftMonitor.from_file(reference)
+        else:
+            app.state.drift = None
         yield
 
     app = FastAPI(
@@ -81,8 +118,33 @@ def create_app(
             )
 
     @app.get("/metrics", include_in_schema=False)
-    def metrics() -> Response:
+    def metrics(request: Request) -> Response:
+        monitor = getattr(request.app.state, "drift", None)
+        if monitor is not None:
+            snapshot = monitor.snapshot()
+            DRIFT_OBSERVATIONS.set(snapshot["n_observations"])
+            DRIFT_DRIFTED.set(
+                sum(
+                    1
+                    for item in snapshot["features"]
+                    if item["status"] == "significant"
+                )
+            )
+            if snapshot["max_psi"] is not None:
+                DRIFT_MAX_PSI.set(snapshot["max_psi"])
+            for item in snapshot["features"]:
+                DRIFT_PSI.labels(item["feature"]).set(item["psi"] or 0.0)
         return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+    @app.get("/drift")
+    def drift(request: Request) -> dict[str, Any]:
+        monitor = getattr(request.app.state, "drift", None)
+        if monitor is None:
+            return {
+                "enabled": False,
+                "reason": "sin referencia de drift configurada",
+            }
+        return {"enabled": True, **monitor.snapshot()}
 
     @app.get("/health", response_model=HealthResponse)
     def health(request: Request) -> HealthResponse:
@@ -97,6 +159,7 @@ def create_app(
     @app.post("/predict", response_model=PredictionResponse)
     def predict(payload: PredictRequest, request: Request) -> PredictionResponse:
         loaded: InferencePipeline = request.app.state.pipeline
+        monitor: DriftMonitor | None = getattr(request.app.state, "drift", None)
         try:
             prediction = loaded.predict(
                 payload.transaction,
@@ -104,6 +167,7 @@ def create_app(
                 identity=_record_frame(payload.identity),
                 history_identity=_records_frame(payload.history_identity),
                 threshold=payload.threshold,
+                observe=monitor.observe if monitor is not None else None,
             )
         except (TypeError, ValueError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc

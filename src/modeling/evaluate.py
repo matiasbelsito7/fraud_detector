@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gc
 import math
+from collections.abc import Callable
 from typing import Any
 
 import numpy as np
@@ -11,8 +12,14 @@ from sklearn.metrics import precision_recall_curve, roc_curve
 
 from src.modeling.dataset import SplitData
 from src.modeling.folds import Fold
-from src.modeling.metrics import summarize
+from src.modeling.metrics import pr_auc, roc_auc, summarize
 from src.modeling.space import build_params
+from src.preprocessing.categoricals import (
+    NATIVE_ENCODING,
+    ORDINAL_ENCODING,
+    categorical_columns,
+    prepare_categoricals,
+)
 
 #: Criterio de negocio para el umbral operativo (specs.md §8.1 exige un umbral
 #: "fijado segun requerimiento de negocio"). Ese requerimiento no venia
@@ -33,6 +40,7 @@ def out_of_fold_scores(
     folds: list[Fold],
     seed: int,
     strict: bool = False,
+    encoding: str = ORDINAL_ENCODING,
 ) -> dict[str, Any]:
     """Puntua cada fila de `train` con un modelo que no la vio en ajuste.
 
@@ -57,15 +65,26 @@ def out_of_fold_scores(
     scores = np.full(train.n_rows, np.nan, dtype=float)
     rows: list[dict[str, Any]] = []
     for fold_id, (tr, va) in enumerate(folds):
+        X_tr = prepare_categoricals(train.X.iloc[tr], encoding=encoding, copy=False)
+        X_va = prepare_categoricals(train.X.iloc[va], encoding=encoding, copy=False)
+        fit_kwargs: dict[str, Any] = (
+            {"categorical_feature": categorical_columns(X_tr.columns)}
+            if encoding == NATIVE_ENCODING
+            else {}
+        )
         estimator = LGBMClassifier(n_estimators=rounds, **lgb_params)
-        estimator.fit(train.X.iloc[tr], train.y.iloc[tr])
-        scores[va] = np.asarray(estimator.predict_proba(train.X.iloc[va]))[:, 1]
+        estimator.fit(X_tr, train.y.iloc[tr], **fit_kwargs)
+        fold_scores = np.asarray(estimator.predict_proba(X_va))[:, 1]
+        scores[va] = fold_scores
+        y_va = np.asarray(train.y.iloc[va], dtype=int)
         rows.append(
             {
                 "fold": fold_id,
                 "n_train": int(len(tr)),
                 "n_scored": int(len(va)),
                 "rounds": int(rounds),
+                "pr_auc": pr_auc(y_va, fold_scores),
+                "roc_auc": roc_auc(y_va, fold_scores),
             }
         )
         del estimator
@@ -160,3 +179,57 @@ def recall_interval(recall: float, n_pos: int, z: float = 1.96) -> tuple[float, 
         return (float("nan"), float("nan"))
     se = math.sqrt(max(recall * (1.0 - recall), 0.0) / n_pos)
     return (max(0.0, recall - z * se), min(1.0, recall + z * se))
+
+
+def bootstrap_ci(
+    y_true: Any,
+    y_score: Any,
+    metric: Callable[[np.ndarray, np.ndarray], float],
+    *,
+    n_boot: int = 500,
+    confidence: float = 0.95,
+    seed: int = 42,
+) -> dict[str, float | int]:
+    """Intervalo bootstrap percentil para una metrica ya puntuada.
+
+    Remuestrea filas con reemplazo. Es una aproximacion i.i.d.; para series
+    temporales largas conviene leerlo junto a la variabilidad entre pliegues y
+    seeds, no como un intervalo exacto. Las muestras con una sola clase se
+    descartan porque PR-AUC/ROC-AUC no estan definidas.
+    """
+    if n_boot <= 0:
+        raise ValueError("n_boot debe ser positivo")
+    if not 0.0 < confidence < 1.0:
+        raise ValueError("confidence debe estar en (0, 1)")
+    y = np.asarray(y_true).astype(int).ravel()
+    s = np.asarray(y_score, dtype=float).ravel()
+    if y.shape != s.shape:
+        raise ValueError(f"y_true e y_score con distinta forma: {y.shape} vs {s.shape}")
+    if y.size == 0:
+        raise ValueError("Sin filas no se puede calcular el intervalo")
+
+    rng = np.random.default_rng(seed)
+    samples: list[float] = []
+    for _ in range(n_boot):
+        idx = rng.integers(0, y.size, size=y.size)
+        y_boot = y[idx]
+        if np.unique(y_boot).size < 2:
+            continue
+        samples.append(float(metric(y_boot, s[idx])))
+
+    estimate = float(metric(y, s))
+    if len(samples) < 2:
+        return {
+            "estimate": estimate,
+            "lower": float("nan"),
+            "upper": float("nan"),
+            "n_boot": len(samples),
+        }
+    alpha = (1.0 - confidence) / 2.0
+    lower, upper = np.quantile(samples, [alpha, 1.0 - alpha])
+    return {
+        "estimate": estimate,
+        "lower": float(lower),
+        "upper": float(upper),
+        "n_boot": len(samples),
+    }

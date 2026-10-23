@@ -20,6 +20,12 @@ from src.modeling.space import (
     config_key,
     to_python,
 )
+from src.preprocessing.categoricals import (
+    NATIVE_ENCODING,
+    ORDINAL_ENCODING,
+    categorical_columns,
+    prepare_categoricals,
+)
 
 #: Techo de rondas de boosting. El corte real lo hace el early stopping; este
 #: techo acota el coste y mantiene el rango comparable al modelo de referencia
@@ -32,6 +38,25 @@ EARLY_STOPPING_ROUNDS = 30
 EARLY_STOPPING_METRIC = "average_precision"
 SELECTION_METRIC = "mean_pr_auc"
 TIEBREAK_METRIC = "mean_roc_auc"
+TIEBREAK_MIN_METRIC = "min_pr_auc"
+
+
+def _rank_by_selection(table: pd.DataFrame) -> pd.DataFrame:
+    """Ordena por PR-AUC medio, ROC-AUC medio, peor pliegue y config_id."""
+    columns = [
+        SELECTION_METRIC,
+        TIEBREAK_METRIC,
+        TIEBREAK_MIN_METRIC,
+        "config_id",
+    ]
+    missing = [column for column in columns if column not in table.columns]
+    if missing:
+        raise ValueError(f"Faltan columnas para el criterio: {missing}")
+    return table.sort_values(
+        columns,
+        ascending=[False, False, False, True],
+        kind="mergesort",
+    ).reset_index(drop=True)
 
 
 def build_search_params(params: dict[str, Any], seed: int) -> dict[str, Any]:
@@ -47,7 +72,11 @@ def build_search_params(params: dict[str, Any], seed: int) -> dict[str, Any]:
 
 
 def tune_one(
-    params: dict[str, Any], train: SplitData, folds: list[Fold], seed: int
+    params: dict[str, Any],
+    train: SplitData,
+    folds: list[Fold],
+    seed: int,
+    encoding: str = ORDINAL_ENCODING,
 ) -> dict[str, Any]:
     """Evalua una configuracion en los pliegues walk-forward internos de `train`.
 
@@ -59,13 +88,18 @@ def tune_one(
     started = time.perf_counter()
 
     for fold_id, (tr, va) in enumerate(folds):
-        X_tr = train.X.iloc[tr]
+        X_tr = prepare_categoricals(train.X.iloc[tr], encoding=encoding, copy=False)
         y_tr = train.y.iloc[tr]
-        X_va = train.X.iloc[va]
+        X_va = prepare_categoricals(train.X.iloc[va], encoding=encoding, copy=False)
         y_va = train.y.iloc[va]
+        dataset_kwargs: dict[str, Any] = (
+            {"categorical_feature": categorical_columns(X_tr.columns)}
+            if encoding == NATIVE_ENCODING
+            else {}
+        )
 
-        dtrain = lgb.Dataset(X_tr, label=y_tr)
-        dvalid = lgb.Dataset(X_va, label=y_va, reference=dtrain)
+        dtrain = lgb.Dataset(X_tr, label=y_tr, **dataset_kwargs)
+        dvalid = lgb.Dataset(X_va, label=y_va, reference=dtrain, **dataset_kwargs)
         booster = lgb.train(
             lgb_params,
             dtrain,
@@ -120,12 +154,13 @@ def run_search(
     folds: list[Fold],
     seed: int,
     on_result: Callable[[dict[str, Any], int, int], None] | None = None,
+    encoding: str = ORDINAL_ENCODING,
 ) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
     """Ejecuta la busqueda y devuelve la tabla ordenada por el criterio de seleccion."""
     anchor_key = config_key(ANCHOR_PARAMS)
     results = []
     for index, params in enumerate(configs):
-        result = tune_one(params, train, folds, seed)
+        result = tune_one(params, train, folds, seed, encoding=encoding)
         result["config_id"] = index
         result["is_anchor"] = config_key(params) == anchor_key
         results.append(result)
@@ -135,19 +170,15 @@ def run_search(
     table = pd.DataFrame(
         [{k: v for k, v in r.items() if k != "folds"} for r in results]
     )
-    table = table.sort_values(
-        [SELECTION_METRIC, TIEBREAK_METRIC], ascending=False
-    ).reset_index(drop=True)
+    table = _rank_by_selection(table)
     return table, results
 
 
 def select_best(table: pd.DataFrame) -> dict[str, Any]:
-    """Configuracion ganadora: mayor PR-AUC medio, desempate por ROC-AUC medio."""
+    """Ganadora por PR-AUC medio; desempates ROC-AUC, peor pliegue y config_id."""
     if table.empty:
         raise ValueError("Tabla de busqueda vacia")
-    row = table.sort_values([SELECTION_METRIC, TIEBREAK_METRIC], ascending=False).iloc[
-        0
-    ]
+    row = _rank_by_selection(table).iloc[0]
     return {
         "params": {name: to_python(row[name]) for name in SEARCH_SPACE},
         "best_iteration": int(row["best_iteration"]),
@@ -160,7 +191,11 @@ def select_best(table: pd.DataFrame) -> dict[str, Any]:
 
 
 def fit_final(
-    params: dict[str, Any], best_iteration: int, train: SplitData, seed: int
+    params: dict[str, Any],
+    best_iteration: int,
+    train: SplitData,
+    seed: int,
+    encoding: str = ORDINAL_ENCODING,
 ) -> LGBMClassifier:
     """Reentrena la configuracion ganadora sobre todo `train`, sin validacion.
 
@@ -172,7 +207,13 @@ def fit_final(
     estimator = LGBMClassifier(
         n_estimators=best_iteration, **build_params(params, seed)
     )
-    estimator.fit(train.X, train.y)
+    X = prepare_categoricals(train.X, encoding=encoding)
+    fit_kwargs: dict[str, Any] = (
+        {"categorical_feature": categorical_columns(X.columns)}
+        if encoding == NATIVE_ENCODING
+        else {}
+    )
+    estimator.fit(X, train.y, **fit_kwargs)
     return estimator
 
 
